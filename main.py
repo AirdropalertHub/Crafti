@@ -3,6 +3,23 @@ import re
 from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
 
+from flask import Flask
+from threading import Thread
+
+# --- Flask Webserver (Keep Alive) ---
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is Running!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
 # --- Credentials ---
 api_id = 7823667
 api_hash = '178e54c6c8dbe5d8543fb06ead54da45'
@@ -72,4 +89,8 @@ async def main():
     print("🚀 Bot is running... Watching Umair's channel...")
     await asyncio.gather(user_client.run_until_disconnected(), bot_client.run_until_disconnected())
 
+# --- Keep Alive Call ---
+keep_alive()
+
+# --- Start Bot ---
 asyncio.run(main())
