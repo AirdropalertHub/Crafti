@@ -1,10 +1,7 @@
 import asyncio
-import re
 from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
-
-from flask import Flask
-from threading import Thread
+from openai import OpenAI
 
 # --- Flask Webserver (Keep Alive) ---
 app = Flask('')
@@ -24,73 +21,84 @@ def keep_alive():
 api_id = 7823667
 api_hash = '178e54c6c8dbe5d8543fb06ead54da45'
 string_session = '1BJWap1sAUB4q5Sp93KohDvZYIm6094k8YZ0JQtv1YbOwHQGv_d95d5MUZwbsLclJZt_OvlP5plHCy5tCAG4WueWHFazVCHxOTKe_PODdHruV6vNvQn79tEOrEH__fX6b62IpVxADIZy4LtdK0e1nedLiesgsj04W6AJEWUDUSARLzoQULNe5plMMvcpwtbLX0Rszc0jSSNE8e068nhdgJb4fCOKbNwxdRlUyr5HdnVJAu7L4HNAAHyFvgDDP7Pq8Q9u5hrRVcFXFvlPFZDFx0FofMpud8Dccxf53nrO73ZM3TwjrmkjhA7p4p7tESdb51FV9RwbvE718-C2UrJVrE8HQFLqsoMg='
-bot_token = '7358660128:AAEP7rsba7zM_0JMikXVxVXAcFCxoOy0KLQ'
+bot_token = '7358660128:AAGlIGzE7_SyI0Uppaed3mnmgG3ytDbq6r0'
 
 # --- Channel IDs ---
-omer_channel = -1002840030132  # Umair Channel
-fun_group = -1002684616105     # Fun Token Group
-my_channel = -1002654246828    # Your Channel
+fun_group = -1002684616105  # Fun Token Group
+my_channel = -1002654246828 # Your Channel
 
 # --- Clients ---
 user_client = TelegramClient(StringSession(string_session), api_id, api_hash)
 bot_client = TelegramClient('bot_session', api_id, api_hash)
 
-@user_client.on(events.NewMessage(chats=omer_channel))
-async def gpt_answer_handler(event):
-    text = event.raw_text
+# --- OpenAI Client ---
+gpt_client = OpenAI(api_key=openai_api_key)
 
-    if "Our Answer (GPT):" in text:
-        print("✅ GPT answer detected in Umair's message!")
+async def get_gpt_answer(question, options):
+    """Send quiz to GPT and return best matching option."""
+    try:
+        prompt = (
+            f"Question: {question}\n"
+            "Options:\n" + "\n".join(f"- {opt}" for opt in options) +
+            "\nChoose the correct option exactly as it appears."
+        )
 
-        # Extract GPT Answer
-        lines = text.splitlines()
-        answer_line = next((line for line in lines if line.startswith("✅ Our Answer (GPT):")), None)
-        correct_answer = lines[lines.index(answer_line) + 1].strip() if answer_line else "Unknown"
+        response = gpt_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a quiz solver. Reply only with the correct option text."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=50
+        )
 
-        print(f"🎯 Extracted Answer: {correct_answer}")
+        return response.choices[0].message.content.strip()
 
-        # Find latest quiz message in Fun Token Group
-        quiz_link = None
-        async for message in user_client.iter_messages(fun_group, limit=20):
-            if message.buttons:
-                quiz_link = f"https://t.me/c/{str(fun_group)[4:]}/{message.id}"
-                print(f"🔗 Quiz link found: {quiz_link}")
-                break
+    except Exception as e:
+        return f"Error: {e}"
 
-        # Compose Styled Message
+@user_client.on(events.NewMessage(chats=fun_group))
+async def quiz_listener(event):
+    if event.buttons:  # quiz detected
+        question = event.raw_text.strip()
+        options = []
+
+        # Extract button text
+        for row in event.buttons:
+            for button in row:
+                if hasattr(button, 'text'):
+                    options.append(button.text)
+
+        print(f"📝 New Quiz: {question}")
+        print(f"📌 Options: {options}")
+
+        # Get GPT answer
+        correct_answer = await get_gpt_answer(question, options)
+        print(f"✅ GPT Answer: {correct_answer}")
+
+        # Create quiz link
+        quiz_link = f"https://t.me/c/{str(fun_group)[4:]}/{event.id}"
+
+        # Styled message
         message_text = (
             f"🧠 **Quick Quiz Update!**\n\n"
             f"✨ **Correct Answer:** {correct_answer}\n\n"
-            f"⚡ *Powered by CRAZY!* 😎🔥\n"
-            f"💟 FUN TOKEN 🧩"
+            f"⚡ **Powered by CRAZY!** 😎🔥\n"
+            f"**💟 FUN TOKEN 🧩**"
         )
 
-        # Send to Your Channel with Inline Button (link)
-        if quiz_link:
-            await bot_client.send_message(
-                my_channel,
-                message_text,
-                buttons=[Button.url("🧠 Solve Quiz Now", quiz_link)],
-                link_preview=False
-            )
-        else:
-            # If no quiz link found, send plain message
-            await bot_client.send_message(
-                my_channel,
-                message_text,
-                link_preview=False
-            )
-
-        print("🚀 Quiz posted in your channel with styled text & button!")
+        # Send to your channel
+        await bot_client.send_message(
+            my_channel,
+            message_text,
+            buttons=[Button.url("🧠 Solve Quiz Now", quiz_link)],
+            link_preview=False
+        )
 
 async def main():
     await user_client.start()
     await bot_client.start(bot_token=bot_token)
-    print("🚀 Bot is running... Watching Umair's channel...")
+    print("🚀 Bot is running... Watching Fun Token Group directly...")
     await asyncio.gather(user_client.run_until_disconnected(), bot_client.run_until_disconnected())
 
-# --- Keep Alive Call ---
-keep_alive()
-
-# --- Start Bot ---
 asyncio.run(main())
