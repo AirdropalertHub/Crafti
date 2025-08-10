@@ -1,7 +1,10 @@
 import asyncio
+import nest_asyncio
 from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
 from openai import OpenAI
+from flask import Flask
+from threading import Thread
 
 # --- Flask Webserver (Keep Alive) ---
 app = Flask('')
@@ -63,7 +66,6 @@ async def quiz_listener(event):
         question = event.raw_text.strip()
         options = []
 
-        # Extract button text
         for row in event.buttons:
             for button in row:
                 if hasattr(button, 'text'):
@@ -72,14 +74,11 @@ async def quiz_listener(event):
         print(f"📝 New Quiz: {question}")
         print(f"📌 Options: {options}")
 
-        # Get GPT answer
         correct_answer = await get_gpt_answer(question, options)
         print(f"✅ GPT Answer: {correct_answer}")
 
-        # Create quiz link
         quiz_link = f"https://t.me/c/{str(fun_group)[4:]}/{event.id}"
 
-        # Styled message
         message_text = (
             f"🧠 **Quick Quiz Update!**\n\n"
             f"✨ **Correct Answer:** {correct_answer}\n\n"
@@ -87,7 +86,6 @@ async def quiz_listener(event):
             f"**💟 FUN TOKEN 🧩**"
         )
 
-        # Send to your channel
         await bot_client.send_message(
             my_channel,
             message_text,
@@ -101,4 +99,7 @@ async def main():
     print("🚀 Bot is running... Watching Fun Token Group directly...")
     await asyncio.gather(user_client.run_until_disconnected(), bot_client.run_until_disconnected())
 
-asyncio.run(main())
+# --- Replit Fix ---
+nest_asyncio.apply()
+keep_alive()
+asyncio.get_event_loop().run_until_complete(main())
