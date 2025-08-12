@@ -1,7 +1,7 @@
 import asyncio
-import nest_asyncio
 from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
+from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
 from openai import OpenAI
 from flask import Flask
 from threading import Thread
@@ -28,7 +28,7 @@ bot_token = '7358660128:AAGlIGzE7_SyI0Uppaed3mnmgG3ytDbq6r0'
 
 # --- Channel IDs ---
 fun_group = -1002684616105  # Fun Token Group
-my_channel = -1002654246828 # Your Channel
+my_channel = -1002654246828  # Your Channel
 
 # --- Clients ---
 user_client = TelegramClient(StringSession(string_session), api_id, api_hash)
@@ -60,12 +60,45 @@ async def get_gpt_answer(question, options):
     except Exception as e:
         return f"Error: {e}"
 
+async def press_correct_button_multiple_times(event, correct_option_text, presses=5):
+    button_to_press = None
+    for row in event.buttons:
+        for button in row:
+            if hasattr(button, 'text') and button.text == correct_option_text:
+                button_to_press = button
+                break
+        if button_to_press:
+            break
+
+    if not button_to_press or not hasattr(button_to_press, 'data'):
+        print("Correct option button not found or no callback data.")
+        return
+
+    callback_data = button_to_press.data
+
+    for i in range(presses):
+        try:
+            await user_client(
+                GetBotCallbackAnswerRequest(
+                    peer=event.chat_id,
+                    msg_id=event.id,
+                    data=callback_data
+                )
+            )
+            print(f"Clicked correct option {i+1}/{presses}")
+        except Exception as e:
+            print(f"Error clicking button: {e}")
+
+        # Delay between 15 to 19 seconds
+        await asyncio.sleep(15 + (4 * i) % 5)
+
 @user_client.on(events.NewMessage(chats=fun_group))
 async def quiz_listener(event):
     if event.buttons:  # quiz detected
         question = event.raw_text.strip()
         options = []
 
+        # Extract button text
         for row in event.buttons:
             for button in row:
                 if hasattr(button, 'text'):
@@ -74,11 +107,14 @@ async def quiz_listener(event):
         print(f"📝 New Quiz: {question}")
         print(f"📌 Options: {options}")
 
+        # Get GPT answer
         correct_answer = await get_gpt_answer(question, options)
         print(f"✅ GPT Answer: {correct_answer}")
 
+        # Create quiz link
         quiz_link = f"https://t.me/c/{str(fun_group)[4:]}/{event.id}"
 
+        # Styled message
         message_text = (
             f"🧠 **Quick Quiz Update!**\n\n"
             f"✨ **Correct Answer:** {correct_answer}\n\n"
@@ -86,6 +122,7 @@ async def quiz_listener(event):
             f"**💟 FUN TOKEN 🧩**"
         )
 
+        # Send to your channel
         await bot_client.send_message(
             my_channel,
             message_text,
@@ -93,13 +130,13 @@ async def quiz_listener(event):
             link_preview=False
         )
 
+        # Automatically press correct button multiple times
+        await press_correct_button_multiple_times(event, correct_answer, presses=5)
+
 async def main():
     await user_client.start()
     await bot_client.start(bot_token=bot_token)
     print("🚀 Bot is running... Watching Fun Token Group directly...")
     await asyncio.gather(user_client.run_until_disconnected(), bot_client.run_until_disconnected())
 
-# --- Replit Fix ---
-nest_asyncio.apply()
-keep_alive()
-asyncio.get_event_loop().run_until_complete(main())
+asyncio.run(main())
