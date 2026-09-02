@@ -14,7 +14,7 @@ from aiogram.enums import ParseMode
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # ========== CONFIG ==========
-BOT_TOKEN = "8945533096:AAEGfD4jH7su7Icw4CjbxvcJLy1Y9NqbkcM"
+BOT_TOKEN = "8916402393:AAH_eFvnhkC9rbb4EW95tBdQTOUQqBiupPE"
 CHANNEL_ID = "-1003915320301"
 CHANNEL_LINK = "https://t.me/S4DlI5E"
 ATF_URL = "https://atfminers.asloni.online/miner/index.php"
