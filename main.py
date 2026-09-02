@@ -13,7 +13,8 @@ from aiogram.enums import ParseMode
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # ========== CONFIG ==========
-BOT_TOKEN = "8945533096:AAEVcJ_58_0U1whnxwY5HIxyTp1SsEzsglw"
+# 🔴 IMPORTANT: BotFather se naya token generate karo!
+BOT_TOKEN = "YOUR_NEW_BOT_TOKEN_HERE"
 CHANNEL_ID = "-1003915320301"
 CHANNEL_LINK = "https://t.me/S4DlI5E"
 ATF_URL = "https://atfminers.asloni.online/miner/index.php"
@@ -53,7 +54,8 @@ def call_atf(tg_data, cookie, action, extra=None):
     t = int(time.time() * 1000)
     url = f"{ATF_URL}?action={action}&t={t}"
     payload = {"tgWebAppData": tg_data}
-    if extra: payload.update(extra)
+    if extra: 
+        payload.update(extra)
     
     sess = requests.Session()
     sess.headers.update({
@@ -67,11 +69,12 @@ def call_atf(tg_data, cookie, action, extra=None):
     sess.cookies.set("atf_tma_session", cookie)
     
     try:
-        r = sess.post(url, json=payload, timeout=10)
+        r = sess.post(url, json=payload, timeout=15)
         if r.status_code == 200:
             return r.json()
         return {"status": "error"}
-    except:
+    except Exception as e:
+        print(f"API Error: {e}")
         return {"status": "error"}
 
 def extract_tg_data(link):
@@ -80,37 +83,71 @@ def extract_tg_data(link):
     params = urllib.parse.parse_qs(parsed.query)
     return params.get('tgWebAppData', [None])[0]
 
+# ========== SYNC USER ==========
 def sync_user(tg_id):
     conn = db()
     c = conn.cursor()
     c.execute("SELECT link, cookie FROM users WHERE tg_id = ?", (tg_id,))
     user = c.fetchone()
     conn.close()
-    if not user or not user[1]: return
-    
+
+    if not user or not user[1]:
+        print(f"[SYNC] {tg_id}: No link or cookie")
+        return
+
     tg_data = extract_tg_data(user[0])
-    if not tg_data: return
-    
+    if not tg_data:
+        print(f"[SYNC] {tg_id}: No tgWebAppData")
+        return
+
     res = call_atf(tg_data, user[1], "sync_wallet")
-    if res.get("status") == "success":
+
+    if res.get("status") != "success":
+        print(f"[SYNC ERROR] {tg_id}: {res}")
+        return
+
+    try:
+        data = res.get("user", {})
+        
+        pool = float(data.get("pool_wallet", 0))
+        holding = float(data.get("holding_wallet", 0))
+        balance = float(data.get("assets_total", pool + holding))
+        level = int(data.get("miner_level", 1))
+        progress = float(data.get("level_pending_withdraw_atf", 0))
+        completed = data.get("completed_tasks", [])
+
         conn = db()
         c = conn.cursor()
-        c.execute("""UPDATE users SET 
-            pool = ?, holding = ?, balance = ?,
-            level = ?, progress = ?,
-            tasks = ?, last_task = CURRENT_TIMESTAMP
-            WHERE tg_id = ?""", (
-            float(res.get("pool_balance", 0)),
-            float(res.get("holding_wallet", 0)),
-            float(res.get("pool_balance", 0)) + float(res.get("holding_wallet", 0)),
-            int(res.get("level", 1)),
-            float(res.get("progress", 0)),
-            json.dumps(res.get("completed_tasks", [])),
+
+        c.execute("""
+            UPDATE users SET
+                pool = ?,
+                holding = ?,
+                balance = ?,
+                level = ?,
+                progress = ?,
+                tasks = ?,
+                last_task = CURRENT_TIMESTAMP
+            WHERE tg_id = ?
+        """, (
+            pool,
+            holding,
+            balance,
+            level,
+            progress,
+            json.dumps(completed),
             tg_id
         ))
+
         conn.commit()
         conn.close()
 
+        print(f"[SYNC] {tg_id} | Pool={pool} | Holding={holding} | Balance={balance} | Level={level}")
+
+    except Exception as e:
+        print(f"[SYNC PARSE ERROR] {tg_id}: {e}")
+
+# ========== DO TASKS ==========
 def do_tasks(tg_id):
     conn = db()
     c = conn.cursor()
@@ -132,7 +169,7 @@ def do_tasks(tg_id):
         res = call_atf(tg_data, user[1], task)
         if res.get("status") == "success":
             done.append(task)
-        time.sleep(1)
+        time.sleep(1.5)
     
     conn = db()
     c = conn.cursor()
@@ -141,6 +178,7 @@ def do_tasks(tg_id):
     conn.commit()
     conn.close()
 
+# ========== CLAIM REWARDS ==========
 def claim_rewards(tg_id):
     conn = db()
     c = conn.cursor()
@@ -153,11 +191,16 @@ def claim_rewards(tg_id):
     if not tg_data: return
     
     res = call_atf(tg_data, user[1], "claim")
+    
     if res.get("status") == "success":
         conn = db()
         c = conn.cursor()
-        new_pool = float(res.get("new_pool_balance", 0))
-        holding = float(res.get("holding_wallet", 0))
+        
+        data = res.get("user", {})
+        new_pool = float(data.get("pool_wallet", 0))
+        holding = float(data.get("holding_wallet", 0))
+        balance = float(data.get("assets_total", new_pool + holding))
+        
         c.execute("""UPDATE users SET 
             pool = ?, holding = ?, balance = ?,
             last_claim = CURRENT_TIMESTAMP,
@@ -165,12 +208,14 @@ def claim_rewards(tg_id):
             WHERE tg_id = ?""", (
             new_pool,
             holding,
-            new_pool + holding,
+            balance,
             tg_id
         ))
         conn.commit()
         conn.close()
+        print(f"[CLAIM] {tg_id}: {balance} ATF")
 
+# ========== PROCESS USER ==========
 def process_user(tg_id):
     conn = db()
     c = conn.cursor()
@@ -184,13 +229,15 @@ def process_user(tg_id):
     if data[0]:
         try:
             hours = (datetime.now() - datetime.strptime(data[0], '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600
-            if hours >= 2: do_tasks(tg_id)
+            if hours >= 2: 
+                do_tasks(tg_id)
         except: pass
     
     if data[1]:
         try:
             hours = (datetime.now() - datetime.strptime(data[1], '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600
-            if hours >= 6: claim_rewards(tg_id)
+            if hours >= 6: 
+                claim_rewards(tg_id)
         except: pass
     
     sync_user(tg_id)
@@ -203,8 +250,9 @@ def process_all():
     conn.close()
     for u in users:
         try: process_user(u[0])
-        except: pass
-        # ========== FLASK APP ==========
+        except Exception as e:
+            print(f"Error processing {u[0]}: {e}")
+            # ========== FLASK APP ==========
 app = Flask(__name__)
 
 HTML_DASHBOARD = '''
@@ -386,34 +434,78 @@ async def is_member(user_id):
         print(f"Member check error: {e}")
         return False
 
-# ========== COLORED BUTTONS (FIXED) ==========
+# ========== COLORED BUTTONS (DICT STYLE WITH STYLE PROPERTIES) ==========
 
 def get_menu():
-    """Returns InlineKeyboardMarkup with colored buttons"""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="🍪 Add Cookie", callback_data="add"),
-            InlineKeyboardButton(text="💰 Balance", callback_data="bal")
-        ],
-        [
-            InlineKeyboardButton(text="📊 Stats", callback_data="stats"),
-            InlineKeyboardButton(text="⛏️ Mine Now", callback_data="mine")
-        ],
-        [
-            InlineKeyboardButton(text="💬 Support", url="https://t.me/xghostid")
+    """Colored buttons with Primary, Success, Danger styles"""
+    return {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "🍪 Add Cookie",
+                    "callback_data": "add",
+                    "style": "primary"
+                },
+                {
+                    "text": "💰 Balance",
+                    "callback_data": "bal",
+                    "style": "success"
+                }
+            ],
+            [
+                {
+                    "text": "📊 Stats",
+                    "callback_data": "stats",
+                    "style": "primary"
+                },
+                {
+                    "text": "⛏️ Mine Now",
+                    "callback_data": "mine",
+                    "style": "success"
+                }
+            ],
+            [
+                {
+                    "text": "💬 Support",
+                    "url": "https://t.me/xghostid",
+                    "style": "danger"
+                }
+            ]
         ]
-    ])
+    }
 
 def get_back():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Back", callback_data="back")]
-    ])
+    return {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "🔙 Back",
+                    "callback_data": "back",
+                    "style": "danger"
+                }
+            ]
+        ]
+    }
 
 def get_join():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔔 Join Channel", url=CHANNEL_LINK)],
-        [InlineKeyboardButton(text="✅ I've Joined", callback_data="joined")]
-    ])
+    return {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "🔔 Join Channel",
+                    "url": CHANNEL_LINK,
+                    "style": "primary"
+                }
+            ],
+            [
+                {
+                    "text": "✅ I've Joined",
+                    "callback_data": "joined",
+                    "style": "success"
+                }
+            ]
+        ]
+    }
 
 # ========== BOT HANDLERS ==========
 
