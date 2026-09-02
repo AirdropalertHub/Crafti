@@ -20,12 +20,12 @@ CHANNEL_LINK = "https://t.me/S4DlI5E"
 ATF_URL = "https://atfminers.asloni.online/miner/index.php"
 OWNER = "@xghostid"
 
-# ========== YOUR LINK AND COOKIE (PRE-ADDED) ==========
+# ========== YOUR LINK AND COOKIE ==========
 YOUR_TG_ID = "8497620413"
 YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1786140012#tgWebAppData=user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26chat_instance%3D-968499519986194590%26chat_type%3Dsender%26auth_date%3D1788372127%26signature%3D9nlbLAPTBTsFgMMk55AoyrC3WOqON4MXUAfEBYLJSBufD2u3G2QCTGIvAa19aIz-A_-lmIMPNxn4Ogqqb9lQBA%26hash%3De16352f1bf1356b02788a3c45b86f7c4880a71242d9494dcdab0b962e91d41ab&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppFullscreen=1&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
 YOUR_COOKIE = "eyJ0Z19pZC16ljg00Tc2MjA0MTMiLCJpaC16ljUwZmM0NzA4MjhiYjThZGQyMTkxZWYxODewNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzMzF2IN2YXjg2NTYliLCJ1YSI6IiIsImhzdiC16lmFoZ1m1pbmVycy5hc2xvbmkub25saW5lliwiaWF0IjoxNzg4MzgwNTU0LCJleHAiOjE3ODg1NTMzNTR9.RyZXi4IBP9Mr5SQTDviueeaw0BiOM-sOYtD9P3Tn_O8"
 
-# ========== DATABASE ==========
+# ========== DATABASE WITH MIGRATION ==========
 def init_db():
     conn = sqlite3.connect('bot.db')
     c = conn.cursor()
@@ -39,6 +39,7 @@ def init_db():
         level INTEGER DEFAULT 1,
         progress REAL DEFAULT 0,
         tasks TEXT DEFAULT '[]',
+        task_cooldowns TEXT DEFAULT '{}',
         last_task TEXT,
         last_claim TEXT,
         next_claim TEXT,
@@ -50,17 +51,49 @@ def init_db():
     conn.close()
     print("✅ Database initialized!")
 
+def migrate_db():
+    """Add new columns if they don't exist"""
+    conn = sqlite3.connect('bot.db')
+    c = conn.cursor()
+    
+    c.execute("PRAGMA table_info(users)")
+    columns = [row[1] for row in c.fetchall()]
+    
+    if "task_cooldowns" not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN task_cooldowns TEXT DEFAULT '{}'")
+        print("✅ Added task_cooldowns column")
+    
+    conn.commit()
+    conn.close()
+
 init_db()
+migrate_db()
 
 def db():
     return sqlite3.connect('bot.db')
+
+# ========== FIXED: EXTRACT TG DATA FROM FRAGMENT ==========
+def extract_tg_data(link):
+    parsed = urllib.parse.urlparse(link)
+    
+    # Normal query string
+    params = urllib.parse.parse_qs(parsed.query)
+    tg_data = params.get("tgWebAppData", [None])[0]
+    
+    # Telegram Mini App data is commonly after #
+    if not tg_data:
+        params = urllib.parse.parse_qs(parsed.fragment)
+        tg_data = params.get("tgWebAppData", [None])[0]
+    
+    return tg_data
 
 # ========== ATF API ==========
 def call_atf(tg_data, cookie, action, extra=None):
     t = int(time.time() * 1000)
     url = f"{ATF_URL}?action={action}&t={t}"
     payload = {"tgWebAppData": tg_data}
-    if extra: payload.update(extra)
+    if extra: 
+        payload.update(extra)
     
     sess = requests.Session()
     sess.headers.update({
@@ -82,12 +115,7 @@ def call_atf(tg_data, cookie, action, extra=None):
         print(f"API Error: {e}")
         return {"status": "error"}
 
-def extract_tg_data(link):
-    parsed = urllib.parse.urlparse(link)
-    params = urllib.parse.parse_qs(parsed.query)
-    return params.get('tgWebAppData', [None])[0]
-
-# ========== SYNC USER ==========
+# ========== FIXED: SYNC USER ==========
 def sync_user(tg_id):
     conn = db()
     c = conn.cursor()
@@ -118,98 +146,176 @@ def sync_user(tg_id):
         level = int(data.get("miner_level", 1))
         progress = float(data.get("level_pending_withdraw_atf", 0))
         completed = data.get("completed_tasks", [])
+        cooldowns = data.get("task_cooldowns", {})
+        
+        # Check if claim is available
+        claimable = data.get("claimable", False)
+        next_claim = data.get("next_claim")
 
         conn = db()
         c = conn.cursor()
-        c.execute("""UPDATE users SET pool = ?, holding = ?, balance = ?, level = ?, progress = ?, tasks = ?, last_task = CURRENT_TIMESTAMP WHERE tg_id = ?""",
-                  (mined, holding, balance, level, progress, json.dumps(completed), tg_id))
+        c.execute("""UPDATE users SET 
+            pool = ?, holding = ?, balance = ?, 
+            level = ?, progress = ?, 
+            tasks = ?, task_cooldowns = ?
+            WHERE tg_id = ?""",
+            (mined, holding, balance, level, progress, 
+             json.dumps(completed), json.dumps(cooldowns), tg_id))
         conn.commit()
         conn.close()
 
-        print(f"[SYNC] {tg_id} | Balance={balance} | Level={level}")
-        return True
+        print(f"[SYNC] {tg_id} | Balance={balance} | Level={level} | Claimable={claimable}")
+        return {"balance": balance, "claimable": claimable, "next_claim": next_claim}
     except Exception as e:
         print(f"[SYNC ERROR] {tg_id}: {e}")
         return False
 
-# ========== DO TASKS ==========
+# ========== FIXED: DO TASKS (USES SERVER COOLDOWNS) ==========
 def do_tasks(tg_id):
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT link, cookie, tasks FROM users WHERE tg_id = ?", (tg_id,))
+    c.execute("SELECT link, cookie, tasks, task_cooldowns FROM users WHERE tg_id = ?", (tg_id,))
     user = c.fetchone()
     conn.close()
-    if not user or not user[1]: return
+    if not user or not user[1]: return False
     
     tg_data = extract_tg_data(user[0])
-    if not tg_data: return
+    if not tg_data: return False
     
-    tasks = ["telegram_join", "telegram_join_fa", "twitter_follow", "youtube_subscribe", "telegram_react_latest", "website_visit", "youtube_like_comment", "twitter_retweet"]
     done = json.loads(user[2] or '[]')
+    cooldowns = json.loads(user[3] or '{}')
+    current_time = int(time.time())
     
-    for task in tasks:
-        if task in done: continue
-        res = call_atf(tg_data, user[1], task)
+    # All possible tasks
+    all_tasks = ["telegram_join", "telegram_join_fa", "twitter_follow", 
+                 "youtube_subscribe", "telegram_react_latest", "website_visit",
+                 "youtube_like_comment", "twitter_retweet"]
+    
+    # Filter available tasks
+    available_tasks = []
+    for task in all_tasks:
+        if task in done:
+            continue
+        cooldown_time = cooldowns.get(task, 0)
+        if cooldown_time > current_time:
+            continue
+        available_tasks.append(task)
+    
+    if not available_tasks:
+        print(f"[TASKS] {tg_id}: No available tasks")
+        return False
+    
+    print(f"[TASKS] {tg_id}: Available: {available_tasks}")
+    
+    for task in available_tasks:
+        print(f"[TASKS] {tg_id}: Doing {task}")
+        
+        # FIXED: Correct task name handling
+        if task == "telegram_react_latest":
+            # For react post, we need to get post ID first
+            sync_res = call_atf(tg_data, user[1], "sync_wallet")
+            if sync_res and "react_post" in sync_res.get("user", {}):
+                post_data = sync_res["user"]["react_post"]
+                if post_data.get("claimable"):
+                    res = call_atf(tg_data, user[1], "react_post", {"post_id": post_data.get("id")})
+                else:
+                    print(f"[TASKS] {tg_id}: React post not claimable")
+                    continue
+            else:
+                res = call_atf(tg_data, user[1], "react_post")
+        else:
+            res = call_atf(tg_data, user[1], task)
+        
+        print(f"[TASKS] {tg_id}: {task} response: {res}")
+        
         if res.get("status") == "success":
             done.append(task)
-        time.sleep(1.5)
+            # FIXED: Get cooldowns from correct location
+            server_cooldowns = res.get("task_cooldowns")
+            if not server_cooldowns:
+                server_cooldowns = res.get("user", {}).get("task_cooldowns", {})
+            if server_cooldowns:
+                cooldowns.update(server_cooldowns)
+        
+        time.sleep(2)
     
+    # Save updated tasks and cooldowns
     conn = db()
     c = conn.cursor()
-    c.execute("UPDATE users SET tasks = ?, last_task = CURRENT_TIMESTAMP WHERE tg_id = ?", (json.dumps(done), tg_id))
+    c.execute("UPDATE users SET tasks = ?, task_cooldowns = ?, last_task = CURRENT_TIMESTAMP WHERE tg_id = ?", 
+              (json.dumps(done), json.dumps(cooldowns), tg_id))
     conn.commit()
     conn.close()
+    
+    return True
 
-# ========== CLAIM REWARDS ==========
+# ========== FIXED: CLAIM REWARDS (CHECKS AVAILABILITY) ==========
 def claim_rewards(tg_id):
     conn = db()
     c = conn.cursor()
     c.execute("SELECT link, cookie FROM users WHERE tg_id = ?", (tg_id,))
     user = c.fetchone()
     conn.close()
-    if not user or not user[1]: return
-    
-    tg_data = extract_tg_data(user[0])
-    if not tg_data: return
-    
-    res = call_atf(tg_data, user[1], "claim")
-    if res.get("status") == "success":
-        data = res.get("user", {})
-        new_mined = float(data.get("mined_balance", 0))
-        holding = float(data.get("wallet_holding_atf", 0))
-        balance = float(data.get("assets_total", new_mined + holding))
-        
-        conn = db()
-        c = conn.cursor()
-        c.execute("UPDATE users SET pool = ?, holding = ?, balance = ?, last_claim = CURRENT_TIMESTAMP, next_claim = datetime('now', '+6 hours') WHERE tg_id = ?",
-                  (new_mined, holding, balance, tg_id))
-        conn.commit()
-        conn.close()
-        print(f"[CLAIM] {tg_id}: {balance} ATF")
 
-# ========== PROCESS USER ==========
-def process_user(tg_id):
+    if not user or not user[0] or not user[1]:
+        return False
+
+    tg_data = extract_tg_data(user[0])
+    if not tg_data:
+        print(f"[CLAIM] {tg_id}: No tgWebAppData")
+        return False
+
+    # First check if claim is available
+    sync_result = sync_user(tg_id)
+    if sync_result and not sync_result.get("claimable", False):
+        print(f"[CLAIM] {tg_id}: No claimable rewards available")
+        return False
+
+    res = call_atf(tg_data, user[1], "claim")
+    print(f"[CLAIM RESPONSE] {tg_id}: {res}")
+
+    if res.get("status") != "success":
+        return False
+
+    new_balance = float(res.get("new_balance", 0))
+    reward = float(res.get("reward", 0))
+    next_available = res.get("next_available")
+
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT last_task, last_claim FROM users WHERE tg_id = ?", (tg_id,))
-    data = c.fetchone()
+
+    c.execute("""
+        UPDATE users
+        SET balance = ?,
+            last_claim = CURRENT_TIMESTAMP,
+            next_claim = ?
+        WHERE tg_id = ?
+    """, (
+        new_balance,
+        datetime.fromtimestamp(int(next_available)).strftime("%Y-%m-%d %H:%M:%S") if next_available else None,
+        tg_id
+    ))
+
+    conn.commit()
     conn.close()
-    if not data: return
+
+    print(f"[CLAIM] {tg_id}: +{reward} ATF | Balance={new_balance}")
+    return True
+
+# ========== FIXED: PROCESS USER (REMOVED 2-HOUR GATE) ==========
+def process_user(tg_id):
+    print(f"[PROCESS] Processing {tg_id}")
     
-    sync_user(tg_id)
+    # Always sync first
+    sync_result = sync_user(tg_id)
     
-    if data[0]:
-        try:
-            hours = (datetime.now() - datetime.strptime(data[0], '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600
-            if hours >= 2: do_tasks(tg_id)
-        except: pass
+    # Always try tasks (they have their own cooldown checks)
+    do_tasks(tg_id)
     
-    if data[1]:
-        try:
-            hours = (datetime.now() - datetime.strptime(data[1], '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600
-            if hours >= 6: claim_rewards(tg_id)
-        except: pass
+    # Try claim if available
+    claim_rewards(tg_id)
     
+    # Final sync
     sync_user(tg_id)
 
 def process_all():
@@ -407,7 +513,8 @@ def debug_user(tg_id):
         'has_link': bool(user[1]),
         'has_cookie': bool(user[2]),
         'balance': user[3],
-        'level': user[6]
+        'level': user[6],
+        'next_claim': user[10]
     })
     # ========== AUTO ADD YOUR ACCOUNT ==========
 def auto_add_your_account():
@@ -457,7 +564,7 @@ def get_back():
 def get_join():
     return {"inline_keyboard": [[{"text": "🔔 Join Channel", "url": CHANNEL_LINK, "style": "primary"}], [{"text": "✅ I've Joined", "callback_data": "joined", "style": "success"}]]}
 
-# ========== BOT HANDLERS ==========
+# ========== FIXED: START HANDLER ==========
 @dp.message(Command("start"))
 async def start(msg: types.Message):
     tg_id = str(msg.from_user.id)
@@ -485,10 +592,13 @@ async def start(msg: types.Message):
     
     await msg.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
+# ========== FIXED: JOINED HANDLER ==========
 @dp.callback_query(F.data == "joined")
 async def joined(call: types.CallbackQuery):
-    if await is_member(str(call.from_user.id)):
+    tg_id = str(call.from_user.id)
+    if await is_member(tg_id):
         await call.message.delete()
+        # Create new message instead of using call.message
         await start(call.message)
     else:
         await call.answer("❌ Not joined yet!", show_alert=True)
@@ -598,7 +708,7 @@ async def handle_text(msg: types.Message):
 
 # ========== SCHEDULER ==========
 scheduler = BackgroundScheduler()
-scheduler.add_job(process_all, 'interval', minutes=15)
+scheduler.add_job(process_all, 'interval', minutes=5)
 scheduler.start()
 
 # ========== RUN BOTH ==========
@@ -608,12 +718,12 @@ def run_flask():
 async def run_bot():
     auto_add_your_account()
     print("=" * 40)
-    print("🚀 ATF Bot Started")
+    print("🚀 ATF Bot Started (FULLY FIXED)")
     print("📊 Dashboard: http://localhost:5000")
     print("💬 Support: @xghostid")
     print(f"✅ Your Account: {YOUR_TG_ID}")
-    print("🔄 Auto tasks every 2 hours")
-    print("💰 Auto claim every 6 hours")
+    print("🔄 Auto tasks with cooldown management")
+    print("💰 Auto claim with availability check")
     print("=" * 40)
     await dp.start_polling(bot)
 
