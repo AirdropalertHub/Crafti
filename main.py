@@ -3,6 +3,7 @@ import json
 import sqlite3
 import time
 import requests
+import urllib.parse
 from datetime import datetime
 from threading import Thread
 from flask import Flask, request, jsonify, render_template_string
@@ -18,6 +19,11 @@ CHANNEL_ID = "-1003915320301"
 CHANNEL_LINK = "https://t.me/S4DlI5E"
 ATF_URL = "https://atfminers.asloni.online/miner/index.php"
 OWNER = "@xghostid"
+
+# ========== YOUR LINK AND COOKIE (PRE-ADDED) ==========
+YOUR_TG_ID = "8497620413"
+YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1786140012#tgWebAppData=user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26chat_instance%3D-968499519986194590%26chat_type%3Dsender%26auth_date%3D1788372127%26signature%3D9nlbLAPTBTsFgMMk55AoyrC3WOqON4MXUAfEBYLJSBufD2u3G2QCTGIvAa19aIz-A_-lmIMPNxn4Ogqqb9lQBA%26hash%3De16352f1bf1356b02788a3c45b86f7c4880a71242d9494dcdab0b962e91d41ab&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppFullscreen=1&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
+YOUR_COOKIE = "eyJ0Z19pZC16ljg00Tc2MjA0MTMiLCJpaC16ljUwZmM0NzA4MjhiYjThZGQyMTkxZWYxODewNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzMzF2IN2YXjg2NTYliLCJ1YSI6IiIsImhzdiC16lmFoZ1m1pbmVycy5hc2xvbmkub25saW5lliwiaWF0IjoxNzg4MzgwNTU0LCJleHAiOjE3ODg1NTMzNTR9.RyZXi4IBP9Mr5SQTDviueeaw0BiOM-sOYtD9P3Tn_O8"
 
 # ========== DATABASE ==========
 def init_db():
@@ -54,8 +60,7 @@ def call_atf(tg_data, cookie, action, extra=None):
     t = int(time.time() * 1000)
     url = f"{ATF_URL}?action={action}&t={t}"
     payload = {"tgWebAppData": tg_data}
-    if extra: 
-        payload.update(extra)
+    if extra: payload.update(extra)
     
     sess = requests.Session()
     sess.headers.update({
@@ -78,7 +83,6 @@ def call_atf(tg_data, cookie, action, extra=None):
         return {"status": "error"}
 
 def extract_tg_data(link):
-    import urllib.parse
     parsed = urllib.parse.urlparse(link)
     params = urllib.parse.parse_qs(parsed.query)
     return params.get('tgWebAppData', [None])[0]
@@ -91,32 +95,23 @@ def sync_user(tg_id):
     user = c.fetchone()
     conn.close()
 
-    if not user:
-        print(f"[SYNC] {tg_id}: User not found in database")
-        return
-
-    if not user[0]:
-        print(f"[SYNC] {tg_id}: No link found")
-        return
-
-    if not user[1]:
-        print(f"[SYNC] {tg_id}: No cookie found")
-        return
+    if not user or not user[0] or not user[1]:
+        print(f"[SYNC] {tg_id}: Missing link or cookie")
+        return False
 
     tg_data = extract_tg_data(user[0])
     if not tg_data:
-        print(f"[SYNC] {tg_id}: Failed to extract tgWebAppData from link")
-        return
+        print(f"[SYNC] {tg_id}: No tgWebAppData")
+        return False
 
     res = call_atf(tg_data, user[1], "sync_wallet")
 
     if res.get("status") != "success":
         print(f"[SYNC ERROR] {tg_id}: {res}")
-        return
+        return False
 
     try:
         data = res.get("user", {})
-        
         mined = float(data.get("mined_balance", 0))
         holding = float(data.get("wallet_holding_atf", 0))
         balance = float(data.get("assets_total", mined + holding))
@@ -126,35 +121,15 @@ def sync_user(tg_id):
 
         conn = db()
         c = conn.cursor()
-
-        c.execute("""
-            UPDATE users SET
-                pool = ?,
-                holding = ?,
-                balance = ?,
-                level = ?,
-                progress = ?,
-                tasks = ?,
-                last_task = CURRENT_TIMESTAMP
-            WHERE tg_id = ?
-        """, (
-            mined,
-            holding,
-            balance,
-            level,
-            progress,
-            json.dumps(completed),
-            tg_id
-        ))
-
+        c.execute("""UPDATE users SET pool = ?, holding = ?, balance = ?, level = ?, progress = ?, tasks = ?, last_task = CURRENT_TIMESTAMP WHERE tg_id = ?""",
+                  (mined, holding, balance, level, progress, json.dumps(completed), tg_id))
         conn.commit()
         conn.close()
 
         print(f"[SYNC] {tg_id} | Balance={balance} | Level={level}")
         return True
-
     except Exception as e:
-        print(f"[SYNC PARSE ERROR] {tg_id}: {e}")
+        print(f"[SYNC ERROR] {tg_id}: {e}")
         return False
 
 # ========== DO TASKS ==========
@@ -169,9 +144,7 @@ def do_tasks(tg_id):
     tg_data = extract_tg_data(user[0])
     if not tg_data: return
     
-    tasks = ["telegram_join", "telegram_join_fa", "twitter_follow", 
-             "youtube_subscribe", "telegram_react_latest", "website_visit",
-             "youtube_like_comment", "twitter_retweet"]
+    tasks = ["telegram_join", "telegram_join_fa", "twitter_follow", "youtube_subscribe", "telegram_react_latest", "website_visit", "youtube_like_comment", "twitter_retweet"]
     done = json.loads(user[2] or '[]')
     
     for task in tasks:
@@ -183,8 +156,7 @@ def do_tasks(tg_id):
     
     conn = db()
     c = conn.cursor()
-    c.execute("UPDATE users SET tasks = ?, last_task = CURRENT_TIMESTAMP WHERE tg_id = ?", 
-              (json.dumps(done), tg_id))
+    c.execute("UPDATE users SET tasks = ?, last_task = CURRENT_TIMESTAMP WHERE tg_id = ?", (json.dumps(done), tg_id))
     conn.commit()
     conn.close()
 
@@ -201,26 +173,16 @@ def claim_rewards(tg_id):
     if not tg_data: return
     
     res = call_atf(tg_data, user[1], "claim")
-    
     if res.get("status") == "success":
-        conn = db()
-        c = conn.cursor()
-        
         data = res.get("user", {})
         new_mined = float(data.get("mined_balance", 0))
         holding = float(data.get("wallet_holding_atf", 0))
         balance = float(data.get("assets_total", new_mined + holding))
         
-        c.execute("""UPDATE users SET 
-            pool = ?, holding = ?, balance = ?,
-            last_claim = CURRENT_TIMESTAMP,
-            next_claim = datetime('now', '+6 hours')
-            WHERE tg_id = ?""", (
-            new_mined,
-            holding,
-            balance,
-            tg_id
-        ))
+        conn = db()
+        c = conn.cursor()
+        c.execute("UPDATE users SET pool = ?, holding = ?, balance = ?, last_claim = CURRENT_TIMESTAMP, next_claim = datetime('now', '+6 hours') WHERE tg_id = ?",
+                  (new_mined, holding, balance, tg_id))
         conn.commit()
         conn.close()
         print(f"[CLAIM] {tg_id}: {balance} ATF")
@@ -239,15 +201,13 @@ def process_user(tg_id):
     if data[0]:
         try:
             hours = (datetime.now() - datetime.strptime(data[0], '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600
-            if hours >= 2: 
-                do_tasks(tg_id)
+            if hours >= 2: do_tasks(tg_id)
         except: pass
     
     if data[1]:
         try:
             hours = (datetime.now() - datetime.strptime(data[1], '%Y-%m-%d %H:%M:%S')).total_seconds() / 3600
-            if hours >= 6: 
-                claim_rewards(tg_id)
+            if hours >= 6: claim_rewards(tg_id)
         except: pass
     
     sync_user(tg_id)
@@ -404,25 +364,13 @@ def add_user():
     
     conn = db()
     c = conn.cursor()
-    
-    # Check if user exists
-    c.execute("SELECT tg_id FROM users WHERE tg_id = ?", (tg_id,))
-    exists = c.fetchone()
-    
-    if exists:
-        c.execute("UPDATE users SET link = ?, cookie = ?, first_name = ? WHERE tg_id = ?", 
-                  (link, cookie, name, tg_id))
-    else:
-        c.execute("INSERT INTO users (tg_id, link, cookie, first_name) VALUES (?, ?, ?, ?)", 
-                  (tg_id, link, cookie, name))
-    
+    c.execute("INSERT OR REPLACE INTO users (tg_id, link, cookie, first_name) VALUES (?, ?, ?, ?)", 
+              (tg_id, link, cookie, name))
     conn.commit()
     conn.close()
     
-    # Sync immediately
     sync_user(tg_id)
-    
-    return jsonify({'ok': True, 'message': 'User added successfully!'})
+    return jsonify({'ok': True})
 
 @app.route('/api/balance/<tg_id>')
 def get_balance(tg_id):
@@ -461,7 +409,28 @@ def debug_user(tg_id):
         'balance': user[3],
         'level': user[6]
     })
-    # ========== TELEGRAM BOT ==========
+    # ========== AUTO ADD YOUR ACCOUNT ==========
+def auto_add_your_account():
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT tg_id FROM users WHERE tg_id = ?", (YOUR_TG_ID,))
+    exists = c.fetchone()
+    
+    if not exists:
+        c.execute("INSERT INTO users (tg_id, link, cookie, first_name, username) VALUES (?, ?, ?, ?, ?)", 
+                  (YOUR_TG_ID, YOUR_LINK, YOUR_COOKIE, "Hashu", "xghostid"))
+        conn.commit()
+        print(f"✅ Auto-added your account: {YOUR_TG_ID}")
+    else:
+        c.execute("UPDATE users SET link = ?, cookie = ? WHERE tg_id = ?", 
+                  (YOUR_LINK, YOUR_COOKIE, YOUR_TG_ID))
+        conn.commit()
+        print(f"✅ Updated your account: {YOUR_TG_ID}")
+    
+    conn.close()
+    sync_user(YOUR_TG_ID)
+
+# ========== TELEGRAM BOT ==========
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -469,136 +438,56 @@ async def is_member(user_id):
     try:
         m = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
         return m.status in ["member", "administrator", "creator"]
-    except Exception as e:
-        print(f"Member check error: {e}")
+    except:
         return False
 
 # ========== COLORED BUTTONS ==========
-
 def get_menu():
     return {
         "inline_keyboard": [
-            [
-                {
-                    "text": "🍪 Add Cookie",
-                    "callback_data": "add",
-                    "style": "primary"
-                },
-                {
-                    "text": "💰 Balance",
-                    "callback_data": "bal",
-                    "style": "success"
-                }
-            ],
-            [
-                {
-                    "text": "📊 Stats",
-                    "callback_data": "stats",
-                    "style": "primary"
-                },
-                {
-                    "text": "⛏️ Mine Now",
-                    "callback_data": "mine",
-                    "style": "success"
-                }
-            ],
-            [
-                {
-                    "text": "💬 Support",
-                    "url": "https://t.me/xghostid",
-                    "style": "danger"
-                }
-            ]
+            [{"text": "🍪 Add Cookie", "callback_data": "add", "style": "primary"}, {"text": "💰 Balance", "callback_data": "bal", "style": "success"}],
+            [{"text": "📊 Stats", "callback_data": "stats", "style": "primary"}, {"text": "⛏️ Mine Now", "callback_data": "mine", "style": "success"}],
+            [{"text": "💬 Support", "url": "https://t.me/xghostid", "style": "danger"}]
         ]
     }
 
 def get_back():
-    return {
-        "inline_keyboard": [
-            [
-                {
-                    "text": "🔙 Back",
-                    "callback_data": "back",
-                    "style": "danger"
-                }
-            ]
-        ]
-    }
+    return {"inline_keyboard": [[{"text": "🔙 Back", "callback_data": "back", "style": "danger"}]]}
 
 def get_join():
-    return {
-        "inline_keyboard": [
-            [
-                {
-                    "text": "🔔 Join Channel",
-                    "url": CHANNEL_LINK,
-                    "style": "primary"
-                }
-            ],
-            [
-                {
-                    "text": "✅ I've Joined",
-                    "callback_data": "joined",
-                    "style": "success"
-                }
-            ]
-        ]
-    }
+    return {"inline_keyboard": [[{"text": "🔔 Join Channel", "url": CHANNEL_LINK, "style": "primary"}], [{"text": "✅ I've Joined", "callback_data": "joined", "style": "success"}]]}
 
 # ========== BOT HANDLERS ==========
-
 @dp.message(Command("start"))
 async def start(msg: types.Message):
     tg_id = str(msg.from_user.id)
     name = msg.from_user.first_name or "User"
     username = msg.from_user.username or ""
     
-    is_mem = await is_member(tg_id)
-    
-    if not is_mem:
-        await msg.answer(
-            f"👋 Welcome {name}!\n\n"
-            f"⚠️ Please join our channel first.\n\n"
-            f"🔗 {CHANNEL_LINK}",
-            reply_markup=get_join(),
-            parse_mode=ParseMode.HTML
-        )
+    if not await is_member(tg_id):
+        await msg.answer(f"👋 Welcome {name}!\n\n⚠️ Please join our channel first.\n\n🔗 {CHANNEL_LINK}", reply_markup=get_join(), parse_mode=ParseMode.HTML)
         return
     
-    # Check if user exists in DB
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT balance, link, cookie FROM users WHERE tg_id = ?", (tg_id,))
+    c.execute("UPDATE users SET first_name = ?, username = ? WHERE tg_id = ?", (name, username, tg_id))
+    c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
     user = c.fetchone()
-    
-    if not user:
-        # Create user entry
-        c.execute("INSERT OR IGNORE INTO users (tg_id, first_name, username) VALUES (?, ?, ?)", 
-                  (tg_id, name, username))
-        conn.commit()
-        user = (0, None, None)
-    
+    conn.commit()
     conn.close()
     
     text = "🚀 <b>ATF Bot</b>\n\n"
-    
-    if user[1] and user[2]:
+    if user:
         text += f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n"
-        text += "✅ Account linked\n"
     else:
-        text += "❌ No account linked\n\n"
-        text += "Send your <b>ATF Link</b> first, then Cookie 🍪"
-    
+        text += "❌ No account linked\n\nClick <b>Add Cookie</b> to setup"
     text += "\n\nSelect option:"
     
     await msg.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "joined")
 async def joined(call: types.CallbackQuery):
-    tg_id = str(call.from_user.id)
-    is_mem = await is_member(tg_id)
-    
-    if is_mem:
+    if await is_member(str(call.from_user.id)):
         await call.message.delete()
         await start(call.message)
     else:
@@ -606,24 +495,12 @@ async def joined(call: types.CallbackQuery):
 
 @dp.callback_query(F.data == "add")
 async def add_cookie(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "🍪 <b>Step 1: Send your ATF Link</b>\n\n"
-        "📌 How to get:\n"
-        "1. Open ATF app on Telegram\n"
-        "2. Copy the full URL from browser\n"
-        "3. Send it here\n\n"
-        "Example:\n"
-        "<code>https://atfminers.asloni.online/miner/index.html?tgWebAppData=...</code>\n\n"
-        "After link, send your cookie 🍪",
-        reply_markup=get_back(),
-        parse_mode=ParseMode.HTML
-    )
+    await call.message.edit_text("🍪 <b>Send your cookie</b>\n\n📌 How to get:\n1. Open ATF in browser\n2. F12 → Application → Cookies\n3. Copy <code>atf_tma_session</code> value", reply_markup=get_back(), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "bal")
 async def balance(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
     await call.answer("Fetching...")
-    
     sync_user(tg_id)
     
     conn = db()
@@ -633,19 +510,10 @@ async def balance(call: types.CallbackQuery):
     conn.close()
     
     if not user:
-        await call.message.answer(
-            "❌ No account found!\n\n"
-            "Send your ATF Link and Cookie first.",
-            reply_markup=get_menu(),
-            parse_mode=ParseMode.HTML
-        )
+        await call.message.answer("❌ No account found!", reply_markup=get_menu())
         return
     
-    text = f"💰 <b>Your Balance</b>\n\n"
-    text += f"💎 Balance: <code>{user[0]:.4f}</code> ATF\n"
-    text += f"📈 Level: {user[1]}\n"
-    text += f"📊 Progress: {user[2]:.1f}%"
-    
+    text = f"💰 <b>Your Balance</b>\n\n💎 Balance: <code>{user[0]:.4f}</code> ATF\n📈 Level: {user[1]}\n📊 Progress: {user[2]:.1f}%"
     await call.message.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "stats")
@@ -661,43 +529,24 @@ async def stats(call: types.CallbackQuery):
     conn.close()
     
     if not user:
-        await call.message.answer(
-            "❌ No account found!\n\n"
-            "Send your ATF Link and Cookie first.",
-            reply_markup=get_menu(),
-            parse_mode=ParseMode.HTML
-        )
+        await call.message.answer("❌ No account found!", reply_markup=get_menu())
         return
     
-    text = f"📊 <b>Mining Stats</b>\n\n"
-    text += f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n"
-    text += f"📈 Level: {user[1]}\n"
-    text += f"📊 Progress: {user[2]:.1f}%\n"
-    text += f"⏳ Next Claim: {user[3] or 'Ready'}\n"
-    text += f"🔄 Last Tasks: {user[4] or 'Never'}\n"
-    text += f"💰 Last Claim: {user[5] or 'Never'}"
-    
+    text = f"📊 <b>Mining Stats</b>\n\n💰 Balance: <code>{user[0]:.4f}</code> ATF\n📈 Level: {user[1]}\n📊 Progress: {user[2]:.1f}%\n⏳ Next Claim: {user[3] or 'Ready'}\n🔄 Last Tasks: {user[4] or 'Never'}\n💰 Last Claim: {user[5] or 'Never'}"
     await call.message.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "mine")
 async def mine(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
     await call.answer("⛏️ Mining started!", show_alert=True)
-    
     process_user(tg_id)
-    
-    await call.message.answer(
-        "✅ Mining completed!\n\n"
-        "Check your balance with Balance button.",
-        reply_markup=get_menu()
-    )
+    await call.message.answer("✅ Mining completed!\n\nCheck your balance with Balance button.", reply_markup=get_menu())
 
 @dp.callback_query(F.data == "back")
 async def back(call: types.CallbackQuery):
     await call.message.delete()
     await start(call.message)
 
-# ========== HANDLE LINK AND COOKIE ==========
 @dp.message(F.text)
 async def handle_text(msg: types.Message):
     text = msg.text.strip()
@@ -705,29 +554,15 @@ async def handle_text(msg: types.Message):
     name = msg.from_user.first_name or "User"
     username = msg.from_user.username or ""
     
-    # STEP 1: Check if it's an ATF link
     if "atfminers.asloni.online" in text and "tgWebAppData" in text:
         conn = db()
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO users (tg_id, link, first_name, username) VALUES (?, ?, ?, ?)", 
-                  (tg_id, text, name, username))
+        c.execute("INSERT OR REPLACE INTO users (tg_id, link, first_name, username) VALUES (?, ?, ?, ?)", (tg_id, text, name, username))
         conn.commit()
         conn.close()
-        
-        await msg.answer(
-            "✅ <b>Link saved!</b>\n\n"
-            "Now send your <b>Cookie</b> 🍪\n\n"
-            "📌 How to get:\n"
-            "1. Open ATF in browser\n"
-            "2. Press F12 → Application tab\n"
-            "3. Click Cookies → atfminers.asloni.online\n"
-            "4. Copy <code>atf_tma_session</code> value",
-            reply_markup=get_back(),
-            parse_mode=ParseMode.HTML
-        )
+        await msg.answer("✅ <b>Link saved!</b>\n\nNow send your <b>Cookie</b> 🍪", reply_markup=get_back(), parse_mode=ParseMode.HTML)
         return
     
-    # STEP 2: Check if it's a cookie (JWT token)
     if "eyJ" in text and len(text) > 50:
         conn = db()
         c = conn.cursor()
@@ -736,25 +571,17 @@ async def handle_text(msg: types.Message):
         conn.close()
         
         if not user or not user[0]:
-            await msg.answer(
-                "❌ <b>Link not found!</b>\n\n"
-                "First send your ATF link, then cookie.",
-                reply_markup=get_back(),
-                parse_mode=ParseMode.HTML
-            )
+            await msg.answer("❌ <b>Link not found!</b>\n\nFirst send your ATF link, then cookie.", reply_markup=get_back(), parse_mode=ParseMode.HTML)
             return
         
-        # Save cookie
         conn = db()
         c = conn.cursor()
         c.execute("UPDATE users SET cookie = ? WHERE tg_id = ?", (text, tg_id))
         conn.commit()
         conn.close()
         
-        # Sync user data
         sync_user(tg_id)
         
-        # Get updated balance
         conn = db()
         c = conn.cursor()
         c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
@@ -762,31 +589,12 @@ async def handle_text(msg: types.Message):
         conn.close()
         
         if user and user[0] > 0:
-            await msg.answer(
-                f"✅ <b>Cookie saved!</b>\n\n"
-                f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n\n"
-                f"Bot is now active! 🚀",
-                reply_markup=get_menu(),
-                parse_mode=ParseMode.HTML
-            )
+            await msg.answer(f"✅ <b>Cookie saved!</b>\n\n💰 Balance: <code>{user[0]:.4f}</code> ATF\n\nBot is now active! 🚀", reply_markup=get_menu(), parse_mode=ParseMode.HTML)
         else:
-            await msg.answer(
-                "✅ <b>Cookie saved!</b>\n\n"
-                "Syncing data... Please wait a moment.\n"
-                "Then click 'Balance' to check.",
-                reply_markup=get_menu(),
-                parse_mode=ParseMode.HTML
-            )
+            await msg.answer("✅ <b>Cookie saved!</b>\n\nSyncing data... Please wait a moment.\nThen click 'Balance' to check.", reply_markup=get_menu(), parse_mode=ParseMode.HTML)
         return
     
-    await msg.answer(
-        "❌ <b>Invalid input!</b>\n\n"
-        "Send either:\n"
-        "• ATF link (full URL with tgWebAppData)\n"
-        "• Cookie (atf_tma_session value)",
-        reply_markup=get_menu(),
-        parse_mode=ParseMode.HTML
-    )
+    await msg.answer("❌ <b>Invalid input!</b>\n\nSend either:\n• ATF link (full URL with tgWebAppData)\n• Cookie (atf_tma_session value)", reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
 # ========== SCHEDULER ==========
 scheduler = BackgroundScheduler()
@@ -798,11 +606,14 @@ def run_flask():
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 
 async def run_bot():
+    auto_add_your_account()
     print("=" * 40)
     print("🚀 ATF Bot Started")
     print("📊 Dashboard: http://localhost:5000")
     print("💬 Support: @xghostid")
-    print("📢 Channel: https://t.me/S4DlI5E")
+    print(f"✅ Your Account: {YOUR_TG_ID}")
+    print("🔄 Auto tasks every 2 hours")
+    print("💰 Auto claim every 6 hours")
     print("=" * 40)
     await dp.start_polling(bot)
 
