@@ -4,7 +4,7 @@ import sqlite3
 import time
 import requests
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime
 from threading import Thread, Lock
 from flask import Flask, request, jsonify, render_template_string
 from aiogram import Bot, Dispatcher, types, F
@@ -14,21 +14,18 @@ from aiogram.enums import ParseMode
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # ========== CONFIG ==========
-# 🔴 REPLACE WITH YOUR TOKEN
-BOT_TOKEN = "8916402393:AAH_eFvnhkC9rbb4EW95tBdQTOUQqBiupPE"
+BOT_TOKEN = "8945533096:AAEVcJ_58_0U1whnxwY5HIxyTp1SsEzsglw"
 CHANNEL_ID = "-1003915320301"
 CHANNEL_LINK = "https://t.me/S4DlI5E"
 ATF_URL = "https://atfminers.asloni.online/miner/index.php"
 OWNER = "@xghostid"
-REQUEST_TIMEOUT = 20
-MAX_RETRIES = 2
 
-# ========== USER DATA ==========
+# ========== YOUR LINK AND COOKIES ==========
 YOUR_TG_ID = "8497620413"
-YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1788126044&entry=bot_start&ref=6254728836#tgWebAppData=query_id%3DAAG9ZX96AwAAAL1lf3ogPACr%26user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26auth_date%3D1788385618%26signature%3DQmoJjWhK98nhlK85_VkCilI6h8sFeXssOl0H2DkGyDxKx0C0oQ48WyFVpl7Efq310VwDwXzzbShC2DKicUR6DQ%26hash%3D426dfafdfc5cdc35bb20da29b2626925355dfeb5674fef682cefe467881426d8&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
-
+YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1786140012#tgWebAppData=user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26chat_instance%3D-968499519986194590%26chat_type%3Dsender%26auth_date%3D1788372127%26signature%3D9nlbLAPTBTsFgMMk55AoyrC3WOqON4MXUAfEBYLJSBufD2u3G2QCTGIvAa19aIz-A_-lmIMPNxn4Ogqqb9lQBA%26hash%3De16352f1bf1356b02788a3c45b86f7c4880a71242d9494dcdab0b962e91d41ab&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppFullscreen=1&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
 YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4MzkxMDg2LCJleHAiOjE3ODg1NjM4ODZ9.33Clzopq9pCTt_K9_TzeJj38YQ4EXX3u2859lcHPK2c"
 YOUR_CF_CLEARANCE = "UOib_Ux3y4qr9d6mm2UeKCFxJJHMxAuaI.5UbQFEjkU-1788391082-1.2.1.1-32p.y6raD6rnuZl3CG6Lq_DokUIzTyHSgbwkYUHMor.9W5JSNZU8Ssv6x_BLYPgO8YuK7.X.yri9YjBlqjSoncTNnaTmpnGeYRPO_CeyqgQ7Yy1U34Qjl0mAWp7igYxc.zBUEh_ZxXTUeqreVjzSCv.AtP5ev4ugz5SYWWubqonE44CE4LGX5RvKsPqXAjB14q3KPpofaIbuEnH7QYx_burN8KH0gKZG58vOq5G_Tns4QVWkMNzm.MBLg.xAiv_bzbi33Qe0vV4b4.089xQ_C3gm47KgY.kGnvjuOdUv9tjsCNgafbaZIAzWZeI2XmdFiPrMACxjYmdGk8ahw.nymI5Nmpzi41zpsA6x.qqKr3s"
+
 
 # ========== DATABASE ==========
 def init_db():
@@ -97,7 +94,61 @@ def extract_tg_data(link):
         tg_data = params.get("tgWebAppData", [None])[0]
     return tg_data
 
-# ========== ATF API WITH BOTH COOKIES ==========
+# ========== AUTO COOKIE REFRESH ==========
+def refresh_cookies(tg_id):
+    """Try to get fresh cookies by hitting the main page"""
+    print(f"[COOKIE REFRESH] {tg_id}: Attempting to refresh cookies...")
+    
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT link FROM users WHERE tg_id = ?", (tg_id,))
+    user = c.fetchone()
+    conn.close()
+    
+    if not user or not user[0]:
+        return False
+    
+    try:
+        # Visit main page to get new cookies
+        session = requests.Session()
+        session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1"
+        })
+        
+        response = session.get(user[0], timeout=10)
+        
+        if response.status_code == 200:
+            cookies = session.cookies.get_dict()
+            
+            new_atf = cookies.get("atf_tma_session")
+            new_cf = cookies.get("cf_clearance")
+            
+            if new_atf and new_cf:
+                conn = db()
+                c = conn.cursor()
+                c.execute("UPDATE users SET atf_session = ?, cf_clearance = ? WHERE tg_id = ?",
+                          (new_atf, new_cf, tg_id))
+                conn.commit()
+                conn.close()
+                print(f"[COOKIE REFRESH] {tg_id}: ✅ Cookies refreshed successfully!")
+                return True
+            else:
+                print(f"[COOKIE REFRESH] {tg_id}: ❌ No cookies in response")
+                return False
+        else:
+            print(f"[COOKIE REFRESH] {tg_id}: ❌ Status: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"[COOKIE REFRESH] {tg_id}: ❌ Error: {e}")
+        return False
+
+# ========== ATF API WITH AUTO REFRESH ==========
 def call_atf(tg_data, atf_session, cf_clearance, action, extra=None, retry_count=0):
     t = int(time.time() * 1000)
     url = f"{ATF_URL}?action={action}&t={t}"
@@ -135,8 +186,8 @@ def call_atf(tg_data, atf_session, cf_clearance, action, extra=None, retry_count
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 401:
-            print(f"[API] {action} | 401 - Cookie expired")
-            return {"status": "error", "code": 401}
+            print(f"[API] {action} | 401 - Trying to refresh cookies...")
+            return {"status": "error", "code": 401, "need_refresh": True}
         else:
             print(f"[API] {action} | Status: {response.status_code}")
             return {"status": "error", "code": response.status_code}
@@ -150,7 +201,7 @@ def call_atf(tg_data, atf_session, cf_clearance, action, extra=None, retry_count
         print(f"[API] {action} | Error: {e}")
         return {"status": "error", "code": "exception"}
 
-# ========== SYNC USER ==========
+# ========== SYNC USER WITH AUTO REFRESH ==========
 def sync_user(tg_id):
     conn = db()
     c = conn.cursor()
@@ -161,22 +212,35 @@ def sync_user(tg_id):
     if not user or not user[0]:
         print(f"[SYNC] {tg_id}: Missing link")
         return False
-    if not user[1]:
-        print(f"[SYNC] {tg_id}: Missing atf_session")
-        return False
-    if not user[2]:
-        print(f"[SYNC] {tg_id}: Missing cf_clearance")
-        return False
 
     tg_data = extract_tg_data(user[0])
     if not tg_data:
         print(f"[SYNC] {tg_id}: No tgWebAppData")
         return False
 
+    # Try with current cookies
     res = call_atf(tg_data, user[1], user[2], "sync_wallet")
 
+    # If 401, try to refresh cookies
+    if res.get("need_refresh"):
+        print(f"[SYNC] {tg_id}: 🔄 Refreshing cookies...")
+        if refresh_cookies(tg_id):
+            # Get new cookies
+            conn = db()
+            c = conn.cursor()
+            c.execute("SELECT atf_session, cf_clearance FROM users WHERE tg_id = ?", (tg_id,))
+            new_cookies = c.fetchone()
+            conn.close()
+            
+            if new_cookies:
+                print(f"[SYNC] {tg_id}: 🔄 Retrying with new cookies...")
+                res = call_atf(tg_data, new_cookies[0], new_cookies[1], "sync_wallet")
+        else:
+            print(f"[SYNC] {tg_id}: ❌ Failed to refresh cookies")
+            return False
+
     if res.get("code") == 401:
-        print(f"[SYNC] {tg_id}: 401 - Update both cookies!")
+        print(f"[SYNC] {tg_id}: ❌ Still 401 - Please update cookies manually")
         return False
 
     if res.get("status") != "success":
@@ -267,8 +331,22 @@ def do_tasks(tg_id):
         else:
             res = call_atf(tg_data, user[1], user[2], task)
         
+        if res.get("need_refresh"):
+            print(f"[TASKS] {tg_id}: 🔄 Refreshing cookies...")
+            if refresh_cookies(tg_id):
+                conn = db()
+                c = conn.cursor()
+                c.execute("SELECT atf_session, cf_clearance FROM users WHERE tg_id = ?", (tg_id,))
+                new_cookies = c.fetchone()
+                conn.close()
+                if new_cookies:
+                    if task == "telegram_react_latest":
+                        res = call_atf(tg_data, new_cookies[0], new_cookies[1], "react_post")
+                    else:
+                        res = call_atf(tg_data, new_cookies[0], new_cookies[1], task)
+        
         if res.get("code") == 401:
-            print(f"[TASKS] {tg_id}: 401 - Update both cookies!")
+            print(f"[TASKS] {tg_id}: ❌ Still 401")
             return False
         
         if res.get("status") == "success":
@@ -289,7 +367,7 @@ def do_tasks(tg_id):
     
     return True
 
-# ========== CLAIM REWARDS (FIXED) ==========
+# ========== CLAIM REWARDS ==========
 def claim_rewards(tg_id):
     conn = db()
     c = conn.cursor()
@@ -301,8 +379,6 @@ def claim_rewards(tg_id):
         print(f"[CLAIM] {tg_id}: Missing credentials")
         return False
 
-    # ✅ Always try to claim - even if claimable is 0
-    # Because mining might have happened but claimable flag not updated
     tg_data = extract_tg_data(user[0])
     if not tg_data:
         return False
@@ -310,12 +386,23 @@ def claim_rewards(tg_id):
     print(f"[CLAIM] {tg_id}: Attempting claim...")
     res = call_atf(tg_data, user[1], user[2], "claim")
 
+    if res.get("need_refresh"):
+        print(f"[CLAIM] {tg_id}: 🔄 Refreshing cookies...")
+        if refresh_cookies(tg_id):
+            conn = db()
+            c = conn.cursor()
+            c.execute("SELECT atf_session, cf_clearance FROM users WHERE tg_id = ?", (tg_id,))
+            new_cookies = c.fetchone()
+            conn.close()
+            if new_cookies:
+                res = call_atf(tg_data, new_cookies[0], new_cookies[1], "claim")
+
     if res.get("code") == 401:
-        print(f"[CLAIM] {tg_id}: 401 - Update both cookies!")
+        print(f"[CLAIM] {tg_id}: ❌ Still 401")
         return False
 
     if res.get("status") != "success":
-        print(f"[CLAIM] {tg_id}: No rewards to claim or error")
+        print(f"[CLAIM] {tg_id}: No rewards to claim")
         return False
 
     new_balance = float(res.get("new_balance", 0))
@@ -340,26 +427,14 @@ def claim_rewards(tg_id):
     print(f"[CLAIM] {tg_id}: +{reward} ATF | New Balance={new_balance}")
     return True
 
-# ========== MINE FUNCTION (TASKS + CLAIM) ==========
+# ========== MINE FUNCTION ==========
 def mine_now(tg_id):
-    """Complete all available tasks and claim rewards"""
     print(f"[MINE] {tg_id}: Starting mining process...")
-    
-    # 1. Sync first
     sync_user(tg_id)
-    
-    # 2. Do all available tasks
     do_tasks(tg_id)
-    
-    # 3. Sync again to update balance
     sync_user(tg_id)
-    
-    # 4. Claim rewards (always try)
     claim_rewards(tg_id)
-    
-    # 5. Final sync
     sync_user(tg_id)
-    
     print(f"[MINE] {tg_id}: Mining completed!")
     return True
 
@@ -633,7 +708,8 @@ def get_menu():
         "inline_keyboard": [
             [{"text": "🍪 Add Cookies", "callback_data": "add", "style": "primary"}, {"text": "💰 Balance", "callback_data": "bal", "style": "success"}],
             [{"text": "📊 Stats", "callback_data": "stats", "style": "primary"}, {"text": "⛏️ Mine & Claim", "callback_data": "mine", "style": "success"}],
-            [{"text": "💬 Support", "url": "https://t.me/xghostid", "style": "danger"}]
+            [{"text": "🔄 Refresh Cookies", "callback_data": "refresh_cookies", "style": "danger"}],
+            [{"text": "💬 Support", "url": "https://t.me/xghostid", "style": "primary"}]
         ]
     }
 
@@ -699,6 +775,26 @@ async def add_cookie(call: types.CallbackQuery):
         parse_mode=ParseMode.HTML
     )
 
+@dp.callback_query(F.data == "refresh_cookies")
+async def refresh_cookies_handler(call: types.CallbackQuery):
+    tg_id = str(call.from_user.id)
+    await call.answer("🔄 Refreshing cookies...", show_alert=True)
+    
+    if refresh_cookies(tg_id):
+        await call.message.answer(
+            "✅ <b>Cookies refreshed successfully!</b>\n\n"
+            "Your session has been updated.",
+            reply_markup=get_menu(),
+            parse_mode=ParseMode.HTML
+        )
+    else:
+        await call.message.answer(
+            "❌ <b>Failed to refresh cookies!</b>\n\n"
+            "Please update cookies manually.",
+            reply_markup=get_menu(),
+            parse_mode=ParseMode.HTML
+        )
+
 @dp.callback_query(F.data == "bal")
 async def balance(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
@@ -737,16 +833,13 @@ async def stats(call: types.CallbackQuery):
     text = f"📊 <b>Mining Stats</b>\n\n💰 Balance: <code>{user[0]:.4f}</code> ATF\n📈 Level: {user[1]}\n📊 Progress: {user[2]:.1f}%\n⏳ Next Claim: {user[3] or 'Ready'}\n🔄 Last Tasks: {user[4] or 'Never'}\n💰 Last Claim: {user[5] or 'Never'}"
     await call.message.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
-# ========== FIXED: MINE BUTTON - DOES TASKS + CLAIM ==========
 @dp.callback_query(F.data == "mine")
 async def mine(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
     await call.answer("⛏️ Mining started! Please wait...", show_alert=True)
     
-    # ✅ This will do tasks AND claim rewards
     mine_now(tg_id)
     
-    # Get updated balance
     conn = db()
     c = conn.cursor()
     c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
@@ -756,15 +849,13 @@ async def mine(call: types.CallbackQuery):
     if user:
         await call.message.answer(
             f"✅ <b>Mining Completed!</b>\n\n"
-            f"💰 New Balance: <code>{user[0]:.4f}</code> ATF\n\n"
-            f"Check your balance with Balance button.",
+            f"💰 New Balance: <code>{user[0]:.4f}</code> ATF",
             reply_markup=get_menu(),
             parse_mode=ParseMode.HTML
         )
     else:
         await call.message.answer(
-            "✅ <b>Mining Completed!</b>\n\n"
-            "Check your balance with Balance button.",
+            "✅ <b>Mining Completed!</b>",
             reply_markup=get_menu()
         )
 
@@ -780,7 +871,6 @@ async def handle_text(msg: types.Message):
     name = msg.from_user.first_name or "User"
     username = msg.from_user.username or ""
     
-    # Detect ATF link
     if "atfminers.asloni.online" in text and "tgWebAppData" in text:
         conn = db()
         c = conn.cursor()
@@ -801,7 +891,6 @@ async def handle_text(msg: types.Message):
         )
         return
     
-    # Detect both cookies
     if "atf_session:" in text and "cf_clearance:" in text:
         lines = text.split('\n')
         atf_session = None
@@ -847,11 +936,8 @@ async def handle_text(msg: types.Message):
                 )
             else:
                 await msg.answer(
-                    "❌ <b>Cookies invalid or expired!</b>\n\n"
-                    "Please get fresh cookies from browser.\n"
-                    "1. Open ATF in browser\n"
-                    "2. F12 → Application → Cookies\n"
-                    "3. Copy BOTH values",
+                    "❌ <b>Cookies invalid!</b>\n\n"
+                    "Please get fresh cookies from browser.",
                     reply_markup=get_back(),
                     parse_mode=ParseMode.HTML
                 )
@@ -880,10 +966,10 @@ def run_flask():
 async def run_bot():
     auto_add_your_account()
     print("=" * 40)
-    print("🚀 ATF Bot Started (MINE + CLAIM FIX)")
+    print("🚀 ATF Bot Started (AUTO COOKIE REFRESH)")
     print("📊 Dashboard: http://localhost:5000")
     print("💬 Support: @xghostid")
-    print("✅ MINE button = Tasks + Claim")
+    print("✅ Auto cookie refresh on 401")
     print("=" * 40)
     await dp.start_polling(bot)
 
