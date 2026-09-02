@@ -14,7 +14,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # ========== CONFIG ==========
 BOT_TOKEN = "8945533096:AAEVcJ_58_0U1whnxwY5HIxyTp1SsEzsglw"
-CHANNEL_ID = "-1001234567890"  # Replace with your channel ID
+CHANNEL_ID = "-1003915320301"  # Replace with your channel ID
 ATF_URL = "https://atfminers.asloni.online/miner/index.php"
 OWNER = "@xghostid"
 
