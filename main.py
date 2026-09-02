@@ -14,7 +14,7 @@ from aiogram.enums import ParseMode
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # ========== CONFIG ==========
-BOT_TOKEN = "8945533096:AAEVcJ_58_0U1whnxwY5HIxyTp1SsEzsglw"
+BOT_TOKEN = "8916402393:AAH_eFvnhkC9rbb4EW95tBdQTOUQqBiupPE"
 CHANNEL_ID = "-1003915320301"
 CHANNEL_LINK = "https://t.me/S4DlI5E"
 ATF_URL = "https://atfminers.asloni.online/miner/index.php"
@@ -23,8 +23,8 @@ OWNER = "@xghostid"
 # ========== YOUR LINK AND COOKIES ==========
 YOUR_TG_ID = "8497620413"
 YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1786140012#tgWebAppData=user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26chat_instance%3D-968499519986194590%26chat_type%3Dsender%26auth_date%3D1788372127%26signature%3D9nlbLAPTBTsFgMMk55AoyrC3WOqON4MXUAfEBYLJSBufD2u3G2QCTGIvAa19aIz-A_-lmIMPNxn4Ogqqb9lQBA%26hash%3De16352f1bf1356b02788a3c45b86f7c4880a71242d9494dcdab0b962e91d41ab&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppFullscreen=1&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
-YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4MzkxMDg2LCJleHAiOjE3ODg1NjM4ODZ9.33Clzopq9pCTt_K9_TzeJj38YQ4EXX3u2859lcHPK2c"
-YOUR_CF_CLEARANCE = "UOib_Ux3y4qr9d6mm2UeKCFxJJHMxAuaI.5UbQFEjkU-1788391082-1.2.1.1-32p.y6raD6rnuZl3CG6Lq_DokUIzTyHSgbwkYUHMor.9W5JSNZU8Ssv6x_BLYPgO8YuK7.X.yri9YjBlqjSoncTNnaTmpnGeYRPO_CeyqgQ7Yy1U34Qjl0mAWp7igYxc.zBUEh_ZxXTUeqreVjzSCv.AtP5ev4ugz5SYWWubqonE44CE4LGX5RvKsPqXAjB14q3KPpofaIbuEnH7QYx_burN8KH0gKZG58vOq5G_Tns4QVWkMNzm.MBLg.xAiv_bzbi33Qe0vV4b4.089xQ_C3gm47KgY.kGnvjuOdUv9tjsCNgafbaZIAzWZeI2XmdFiPrMACxjYmdGk8ahw.nymI5Nmpzi41zpsA6x.qqKr3s"
+YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4MzkyMDE5LCJleHAiOjE3ODg1NjQ4MTl9.0HcL_k2YfZAT3bWj92SkTRCJxtzMl3EP4t4b2zfINoU"
+YOUR_CF_CLEARANCE = "5hnY5bcu.2g24gfIgioqIqFjrwsHC1XRuNO4qmG5bP4-1788392020-1.2.1.1-lRw5bet2zMzYZ96YK4z0sFcWEfKL244fLD.SUre.qcgFRMkaxs4EigfEkWfkD9fFI57j2E6KqcF9y7ucM9Wt6w_qoFiBkq.t8VXZmmFgZ8aumiza9OqTHFnbBhCTzMvdmqt.dF188UtbVZaD0P2h1iRDO8sBHAYrbalBrSOwQxmCIc8f8O2_5ysFOuXVsxiUcAXk2Iu2mBMoE4TI8vnDuUVoKQDOogCxToM4eCIkWNdqop.FMkdz6jrwy3El4c5_g2.ud0He4reCFZaSQHKFh5Wnz8DvSAWoG_x2gEv.ekynBddGilHbnIXURH8J8rO3Pf0GRKrmIUoGnStZFwL42t1yfBXOJ6DhSR2WQWZ7SKY"
 
 
 # ========== DATABASE ==========
