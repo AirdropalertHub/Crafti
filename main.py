@@ -26,10 +26,9 @@ MAX_RETRIES = 2
 # ========== USER DATA ==========
 YOUR_TG_ID = "8497620413"
 YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1788126044&entry=bot_start&ref=6254728836#tgWebAppData=query_id%3DAAG9ZX96AwAAAL1lf3ogPACr%26user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26auth_date%3D1788385618%26signature%3DQmoJjWhK98nhlK85_VkCilI6h8sFeXssOl0H2DkGyDxKx0C0oQ48WyFVpl7Efq310VwDwXzzbShC2DKicUR6DQ%26hash%3D426dfafdfc5cdc35bb20da29b2626925355dfeb5674fef682cefe467881426d8&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
-YOUR_COOKIE = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4MzkwMjg1LCJleHAiOjE3ODg1NjMwODV9.iZzWIxMLn5npVaENYK3cHHM6IYUI4zkHAxwm9VWosbE"
 
-# ========== PROCESSING LOCK ==========
-processing_locks = {}
+YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4MzkxMDg2LCJleHAiOjE3ODg1NjM4ODZ9.33Clzopq9pCTt_K9_TzeJj38YQ4EXX3u2859lcHPK2c"
+YOUR_CF_CLEARANCE = "UOib_Ux3y4qr9d6mm2UeKCFxJJHMxAuaI.5UbQFEjkU-1788391082-1.2.1.1-32p.y6raD6rnuZl3CG6Lq_DokUIzTyHSgbwkYUHMor.9W5JSNZU8Ssv6x_BLYPgO8YuK7.X.yri9YjBlqjSoncTNnaTmpnGeYRPO_CeyqgQ7Yy1U34Qjl0mAWp7igYxc.zBUEh_ZxXTUeqreVjzSCv.AtP5ev4ugz5SYWWubqonE44CE4LGX5RvKsPqXAjB14q3KPpofaIbuEnH7QYx_burN8KH0gKZG58vOq5G_Tns4QVWkMNzm.MBLg.xAiv_bzbi33Qe0vV4b4.089xQ_C3gm47KgY.kGnvjuOdUv9tjsCNgafbaZIAzWZeI2XmdFiPrMACxjYmdGk8ahw.nymI5Nmpzi41zpsA6x.qqKr3s"
 
 # ========== DATABASE ==========
 def init_db():
@@ -38,7 +37,8 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         tg_id TEXT PRIMARY KEY,
         link TEXT,
-        cookie TEXT,
+        atf_session TEXT,
+        cf_clearance TEXT,
         balance REAL DEFAULT 0,
         pool REAL DEFAULT 0,
         holding REAL DEFAULT 0,
@@ -65,6 +65,8 @@ def migrate_db():
     columns = [row[1] for row in c.fetchall()]
     
     new_columns = {
+        "atf_session": "TEXT",
+        "cf_clearance": "TEXT",
         "task_cooldowns": "TEXT DEFAULT '{}'",
         "claimable": "INTEGER DEFAULT 0"
     }
@@ -83,41 +85,31 @@ migrate_db()
 def db():
     return sqlite3.connect('bot.db')
 
-# ========== FIXED: EXTRACT TG DATA ==========
+# ========== EXTRACT TG DATA ==========
 def extract_tg_data(link):
-    """Extract tgWebAppData from both query params and fragment"""
     if not link:
         return None
-    
     parsed = urllib.parse.urlparse(link)
-    
-    # Try query string first
     params = urllib.parse.parse_qs(parsed.query)
     tg_data = params.get("tgWebAppData", [None])[0]
-    
-    # Try fragment (Telegram Mini App uses #)
     if not tg_data:
         params = urllib.parse.parse_qs(parsed.fragment)
         tg_data = params.get("tgWebAppData", [None])[0]
-    
     return tg_data
 
-# ========== FIXED: ATF API WITH FULL BROWSER HEADERS ==========
-def call_atf(tg_data, cookie, action, extra=None, retry_count=0):
-    """Call ATF API with full browser headers to avoid 401"""
+# ========== ATF API WITH BOTH COOKIES ==========
+def call_atf(tg_data, atf_session, cf_clearance, action, extra=None, retry_count=0):
     t = int(time.time() * 1000)
     url = f"{ATF_URL}?action={action}&t={t}"
     payload = {"tgWebAppData": tg_data}
     if extra:
         payload.update(extra)
     
-    # Use session for cookie persistence
     session = requests.Session()
     
-    # ✅ CRITICAL: Full browser headers to avoid 401
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Linux; Android 14; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.146 Mobile Safari/537.36",
-        "Accept": "*/*",
+        "Accept": "application/json, text/plain, */*",
         "Accept-Encoding": "gzip, deflate, br",
         "Accept-Language": "en-PK,en-GB;q=0.9,en-US;q=0.8,en;q=0.7",
         "Content-Type": "application/json",
@@ -128,30 +120,31 @@ def call_atf(tg_data, cookie, action, extra=None, retry_count=0):
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
-        "Connection": "keep-alive"
+        "Connection": "keep-alive",
+        "Priority": "u=1,i"
     })
     
-    # Set cookie
-    if cookie:
-        session.cookies.set("atf_tma_session", cookie, domain=".atfminers.asloni.online", path="/")
+    if atf_session:
+        session.cookies.set("atf_tma_session", atf_session, domain=".atfminers.asloni.online", path="/")
+    if cf_clearance:
+        session.cookies.set("cf_clearance", cf_clearance, domain=".atfminers.asloni.online", path="/")
     
     try:
-        response = session.post(url, json=payload, timeout=REQUEST_TIMEOUT)
+        response = session.post(url, json=payload, timeout=20)
         
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 401:
-            print(f"[API] {action} | 401 Unauthorized - Cookie may be expired")
-            return {"status": "error", "code": 401, "message": "Unauthorized"}
+            print(f"[API] {action} | 401 - Cookie expired")
+            return {"status": "error", "code": 401}
         else:
             print(f"[API] {action} | Status: {response.status_code}")
             return {"status": "error", "code": response.status_code}
             
     except requests.exceptions.Timeout:
-        print(f"[API] {action} | Timeout")
-        if retry_count < MAX_RETRIES:
+        if retry_count < 2:
             time.sleep(2)
-            return call_atf(tg_data, cookie, action, extra, retry_count + 1)
+            return call_atf(tg_data, atf_session, cf_clearance, action, extra, retry_count + 1)
         return {"status": "error", "code": "timeout"}
     except Exception as e:
         print(f"[API] {action} | Error: {e}")
@@ -159,15 +152,20 @@ def call_atf(tg_data, cookie, action, extra=None, retry_count=0):
 
 # ========== SYNC USER ==========
 def sync_user(tg_id):
-    """Sync user data from ATF API"""
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT link, cookie FROM users WHERE tg_id = ?", (tg_id,))
+    c.execute("SELECT link, atf_session, cf_clearance FROM users WHERE tg_id = ?", (tg_id,))
     user = c.fetchone()
     conn.close()
 
-    if not user or not user[0] or not user[1]:
-        print(f"[SYNC] {tg_id}: Missing link or cookie")
+    if not user or not user[0]:
+        print(f"[SYNC] {tg_id}: Missing link")
+        return False
+    if not user[1]:
+        print(f"[SYNC] {tg_id}: Missing atf_session")
+        return False
+    if not user[2]:
+        print(f"[SYNC] {tg_id}: Missing cf_clearance")
         return False
 
     tg_data = extract_tg_data(user[0])
@@ -175,10 +173,10 @@ def sync_user(tg_id):
         print(f"[SYNC] {tg_id}: No tgWebAppData")
         return False
 
-    res = call_atf(tg_data, user[1], "sync_wallet")
+    res = call_atf(tg_data, user[1], user[2], "sync_wallet")
 
     if res.get("code") == 401:
-        print(f"[SYNC] {tg_id}: 401 - Cookie expired, please update")
+        print(f"[SYNC] {tg_id}: 401 - Update both cookies!")
         return False
 
     if res.get("status") != "success":
@@ -187,7 +185,6 @@ def sync_user(tg_id):
 
     try:
         data = res.get("user", {})
-        
         mined = float(data.get("mined_balance", 0))
         holding = float(data.get("wallet_holding_atf", 0))
         balance = float(data.get("assets_total", mined + holding))
@@ -196,7 +193,6 @@ def sync_user(tg_id):
         completed = data.get("completed_tasks", [])
         cooldowns = data.get("task_cooldowns", {})
         claimable = 1 if data.get("claimable", False) else 0
-        next_claim = data.get("next_claim")
 
         conn = db()
         c = conn.cursor()
@@ -208,49 +204,42 @@ def sync_user(tg_id):
             WHERE tg_id = ?""",
             (mined, holding, balance, level, progress,
              json.dumps(completed), json.dumps(cooldowns), claimable, tg_id))
-        
-        if next_claim:
-            c.execute("UPDATE users SET next_claim = ? WHERE tg_id = ?", 
-                      (datetime.fromtimestamp(next_claim).strftime("%Y-%m-%d %H:%M:%S"), tg_id))
-        
         conn.commit()
         conn.close()
 
-        print(f"[SYNC] {tg_id} | Balance={balance} | Level={level} | Claimable={claimable}")
+        print(f"[SYNC] {tg_id} | Balance={balance} | Claimable={claimable}")
         return True
-        
     except Exception as e:
         print(f"[SYNC ERROR] {tg_id}: {e}")
         return False
 
 # ========== DO TASKS ==========
 def do_tasks(tg_id):
-    """Process available tasks based on cooldowns"""
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT link, cookie, tasks, task_cooldowns FROM users WHERE tg_id = ?", (tg_id,))
+    c.execute("SELECT link, atf_session, cf_clearance, tasks, task_cooldowns FROM users WHERE tg_id = ?", (tg_id,))
     user = c.fetchone()
     conn.close()
     
-    if not user or not user[1]:
+    if not user or not user[1] or not user[2]:
         return False
     
     tg_data = extract_tg_data(user[0])
     if not tg_data:
         return False
     
-    done = json.loads(user[2] or '[]')
-    cooldowns = json.loads(user[3] or '{}')
+    done = json.loads(user[3] or '[]')
+    cooldowns = json.loads(user[4] or '{}')
     current_time = int(time.time())
     
-    # All possible tasks
     all_tasks = ["telegram_join", "telegram_join_fa", "twitter_follow",
                  "youtube_subscribe", "telegram_react_latest", "website_visit",
                  "youtube_like_comment", "twitter_retweet"]
     
-    # Check available tasks
     available_tasks = []
     for task in all_tasks:
+        if task in done:
+            continue
         cooldown_time = cooldowns.get(task, 0)
         if cooldown_time > current_time:
             continue
@@ -265,29 +254,24 @@ def do_tasks(tg_id):
     for task in available_tasks:
         print(f"[TASKS] {tg_id}: Doing {task}")
         
-        # Special handling for react_post
         if task == "telegram_react_latest":
-            sync_res = call_atf(tg_data, user[1], "sync_wallet")
+            sync_res = call_atf(tg_data, user[1], user[2], "sync_wallet")
             if sync_res and sync_res.get("status") == "success":
                 post_data = sync_res.get("user", {}).get("react_post", {})
                 if post_data.get("claimable"):
-                    res = call_atf(tg_data, user[1], "react_post", {"post_id": post_data.get("id")})
+                    res = call_atf(tg_data, user[1], user[2], "react_post", {"post_id": post_data.get("id")})
                 else:
-                    print(f"[TASKS] {tg_id}: React post not claimable")
                     continue
             else:
-                res = call_atf(tg_data, user[1], "react_post")
+                res = call_atf(tg_data, user[1], user[2], "react_post")
         else:
-            res = call_atf(tg_data, user[1], task)
-        
-        print(f"[TASKS] {tg_id}: {task} response: {res}")
+            res = call_atf(tg_data, user[1], user[2], task)
         
         if res.get("code") == 401:
-            print(f"[TASKS] {tg_id}: 401 - Cookie expired")
+            print(f"[TASKS] {tg_id}: 401 - Update both cookies!")
             return False
         
         if res.get("status") == "success":
-            # Update cooldowns from response
             server_cooldowns = res.get("task_cooldowns")
             if not server_cooldowns:
                 server_cooldowns = res.get("user", {}).get("task_cooldowns", {})
@@ -296,7 +280,6 @@ def do_tasks(tg_id):
         
         time.sleep(2)
     
-    # Save updated cooldowns
     conn = db()
     c = conn.cursor()
     c.execute("UPDATE users SET task_cooldowns = ?, last_task = CURRENT_TIMESTAMP WHERE tg_id = ?",
@@ -306,36 +289,33 @@ def do_tasks(tg_id):
     
     return True
 
-# ========== CLAIM REWARDS ==========
+# ========== CLAIM REWARDS (FIXED) ==========
 def claim_rewards(tg_id):
-    """Claim rewards only if claimable"""
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT link, cookie, claimable FROM users WHERE tg_id = ?", (tg_id,))
+    c.execute("SELECT link, atf_session, cf_clearance, claimable FROM users WHERE tg_id = ?", (tg_id,))
     user = c.fetchone()
     conn.close()
 
-    if not user or not user[0] or not user[1]:
+    if not user or not user[0] or not user[1] or not user[2]:
+        print(f"[CLAIM] {tg_id}: Missing credentials")
         return False
 
-    # ✅ Only claim if claimable is true
-    if not user[2]:
-        print(f"[CLAIM] {tg_id}: Not claimable")
-        return False
-
+    # ✅ Always try to claim - even if claimable is 0
+    # Because mining might have happened but claimable flag not updated
     tg_data = extract_tg_data(user[0])
     if not tg_data:
-        print(f"[CLAIM] {tg_id}: No tgWebAppData")
         return False
 
-    res = call_atf(tg_data, user[1], "claim")
-    print(f"[CLAIM RESPONSE] {tg_id}: {res}")
+    print(f"[CLAIM] {tg_id}: Attempting claim...")
+    res = call_atf(tg_data, user[1], user[2], "claim")
 
     if res.get("code") == 401:
-        print(f"[CLAIM] {tg_id}: 401 - Cookie expired")
+        print(f"[CLAIM] {tg_id}: 401 - Update both cookies!")
         return False
 
     if res.get("status") != "success":
+        print(f"[CLAIM] {tg_id}: No rewards to claim or error")
         return False
 
     new_balance = float(res.get("new_balance", 0))
@@ -344,54 +324,70 @@ def claim_rewards(tg_id):
 
     conn = db()
     c = conn.cursor()
-    c.execute("""
-        UPDATE users
-        SET balance = ?,
-            last_claim = CURRENT_TIMESTAMP,
-            next_claim = ?,
-            claimable = 0
-        WHERE tg_id = ?
-    """, (
-        new_balance,
-        datetime.fromtimestamp(int(next_available)).strftime("%Y-%m-%d %H:%M:%S") if next_available else None,
-        tg_id
-    ))
+    c.execute("""UPDATE users SET 
+        balance = ?, 
+        pool = ?,
+        last_claim = CURRENT_TIMESTAMP, 
+        next_claim = ?, 
+        claimable = 0 
+        WHERE tg_id = ?""",
+              (new_balance, new_balance,
+               datetime.fromtimestamp(int(next_available)).strftime("%Y-%m-%d %H:%M:%S") if next_available else None,
+               tg_id))
     conn.commit()
     conn.close()
 
-    print(f"[CLAIM] {tg_id}: +{reward} ATF | Balance={new_balance}")
+    print(f"[CLAIM] {tg_id}: +{reward} ATF | New Balance={new_balance}")
+    return True
+
+# ========== MINE FUNCTION (TASKS + CLAIM) ==========
+def mine_now(tg_id):
+    """Complete all available tasks and claim rewards"""
+    print(f"[MINE] {tg_id}: Starting mining process...")
+    
+    # 1. Sync first
+    sync_user(tg_id)
+    
+    # 2. Do all available tasks
+    do_tasks(tg_id)
+    
+    # 3. Sync again to update balance
+    sync_user(tg_id)
+    
+    # 4. Claim rewards (always try)
+    claim_rewards(tg_id)
+    
+    # 5. Final sync
+    sync_user(tg_id)
+    
+    print(f"[MINE] {tg_id}: Mining completed!")
     return True
 
 # ========== PROCESS USER ==========
+processing_locks = {}
+
 def process_user(tg_id):
-    """Process user with lock to prevent duplicates"""
-    # Acquire lock
     if tg_id not in processing_locks:
         processing_locks[tg_id] = Lock()
     
     if not processing_locks[tg_id].acquire(blocking=False):
-        print(f"[PROCESS] {tg_id}: Already processing, skipping")
+        print(f"[PROCESS] {tg_id}: Already processing")
         return
     
     try:
         print(f"[PROCESS] Processing {tg_id}")
-        sync_user(tg_id)
-        do_tasks(tg_id)
-        claim_rewards(tg_id)
-        sync_user(tg_id)
+        mine_now(tg_id)
     except Exception as e:
         print(f"[PROCESS] {tg_id}: Error: {e}")
     finally:
         processing_locks[tg_id].release()
 
 def process_all():
-    """Process all active users"""
     conn = db()
     c = conn.cursor()
     c.execute("SELECT tg_id FROM users WHERE active = 1")
     users = c.fetchall()
     conn.close()
-    
     for u in users:
         try:
             process_user(u[0])
@@ -531,25 +527,24 @@ def add_user():
     data = request.json
     tg_id = data.get('tg_id')
     link = data.get('link')
-    cookie = data.get('cookie')
+    atf_session = data.get('atf_session')
+    cf_clearance = data.get('cf_clearance')
     name = data.get('name', '')
     
-    if not all([tg_id, link, cookie]):
+    if not all([tg_id, link, atf_session, cf_clearance]):
         return jsonify({'error': 'Missing data'}), 400
     
     conn = db()
     c = conn.cursor()
-    
-    # ✅ Check if user exists before insert
     c.execute("SELECT tg_id FROM users WHERE tg_id = ?", (tg_id,))
     exists = c.fetchone()
     
     if exists:
-        c.execute("UPDATE users SET link = ?, cookie = ?, first_name = ? WHERE tg_id = ?",
-                  (link, cookie, name, tg_id))
+        c.execute("UPDATE users SET link = ?, atf_session = ?, cf_clearance = ?, first_name = ? WHERE tg_id = ?",
+                  (link, atf_session, cf_clearance, name, tg_id))
     else:
-        c.execute("INSERT INTO users (tg_id, link, cookie, first_name) VALUES (?, ?, ?, ?)",
-                  (tg_id, link, cookie, name))
+        c.execute("INSERT INTO users (tg_id, link, atf_session, cf_clearance, first_name) VALUES (?, ?, ?, ?, ?)",
+                  (tg_id, link, atf_session, cf_clearance, name))
     
     conn.commit()
     conn.close()
@@ -575,14 +570,14 @@ def get_balance(tg_id):
 
 @app.route('/api/refresh/<tg_id>')
 def refresh_user(tg_id):
-    process_user(tg_id)
+    mine_now(tg_id)
     return jsonify({'ok': True})
 
 @app.route('/api/debug/<tg_id>')
 def debug_user(tg_id):
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT tg_id, link IS NOT NULL, cookie IS NOT NULL, balance, level, next_claim FROM users WHERE tg_id = ?", (tg_id,))
+    c.execute("SELECT tg_id, link IS NOT NULL, atf_session IS NOT NULL, cf_clearance IS NOT NULL, balance, level, next_claim FROM users WHERE tg_id = ?", (tg_id,))
     user = c.fetchone()
     conn.close()
     if not user:
@@ -590,14 +585,15 @@ def debug_user(tg_id):
     return jsonify({
         'tg_id': user[0],
         'has_link': bool(user[1]),
-        'has_cookie': bool(user[2]),
-        'balance': user[3],
-        'level': user[4],
-        'next_claim': user[5]
+        'has_atf_session': bool(user[2]),
+        'has_cf_clearance': bool(user[3]),
+        'balance': user[4],
+        'level': user[5],
+        'next_claim': user[6]
     })
     # ========== AUTO ADD YOUR ACCOUNT ==========
 def auto_add_your_account():
-    if not YOUR_LINK or not YOUR_COOKIE:
+    if not YOUR_LINK or not YOUR_ATF_SESSION or not YOUR_CF_CLEARANCE:
         print("⚠️ No default account configured")
         return
     
@@ -607,13 +603,13 @@ def auto_add_your_account():
     exists = c.fetchone()
     
     if not exists:
-        c.execute("INSERT INTO users (tg_id, link, cookie, first_name, username) VALUES (?, ?, ?, ?, ?)",
-                  (YOUR_TG_ID, YOUR_LINK, YOUR_COOKIE, "Hashu", "xghostid"))
+        c.execute("INSERT INTO users (tg_id, link, atf_session, cf_clearance, first_name, username) VALUES (?, ?, ?, ?, ?, ?)",
+                  (YOUR_TG_ID, YOUR_LINK, YOUR_ATF_SESSION, YOUR_CF_CLEARANCE, "Hashu", "xghostid"))
         conn.commit()
         print(f"✅ Auto-added your account: {YOUR_TG_ID}")
     else:
-        c.execute("UPDATE users SET link = ?, cookie = ? WHERE tg_id = ?",
-                  (YOUR_LINK, YOUR_COOKIE, YOUR_TG_ID))
+        c.execute("UPDATE users SET link = ?, atf_session = ?, cf_clearance = ? WHERE tg_id = ?",
+                  (YOUR_LINK, YOUR_ATF_SESSION, YOUR_CF_CLEARANCE, YOUR_TG_ID))
         conn.commit()
         print(f"✅ Updated your account: {YOUR_TG_ID}")
     
@@ -632,13 +628,11 @@ async def is_member(user_id):
         print(f"Member check error: {e}")
         return False
 
-# ========== COLORED BUTTONS ==========
-
 def get_menu():
     return {
         "inline_keyboard": [
-            [{"text": "🍪 Add Cookie", "callback_data": "add", "style": "primary"}, {"text": "💰 Balance", "callback_data": "bal", "style": "success"}],
-            [{"text": "📊 Stats", "callback_data": "stats", "style": "primary"}, {"text": "⛏️ Mine Now", "callback_data": "mine", "style": "success"}],
+            [{"text": "🍪 Add Cookies", "callback_data": "add", "style": "primary"}, {"text": "💰 Balance", "callback_data": "bal", "style": "success"}],
+            [{"text": "📊 Stats", "callback_data": "stats", "style": "primary"}, {"text": "⛏️ Mine & Claim", "callback_data": "mine", "style": "success"}],
             [{"text": "💬 Support", "url": "https://t.me/xghostid", "style": "danger"}]
         ]
     }
@@ -658,11 +652,7 @@ async def start(msg: types.Message):
     username = msg.from_user.username or ""
     
     if not await is_member(tg_id):
-        await msg.answer(
-            f"👋 Welcome {name}!\n\n⚠️ Please join our channel first.\n\n🔗 {CHANNEL_LINK}",
-            reply_markup=get_join(),
-            parse_mode=ParseMode.HTML
-        )
+        await msg.answer(f"👋 Welcome {name}!\n\n⚠️ Please join our channel first.\n\n🔗 {CHANNEL_LINK}", reply_markup=get_join(), parse_mode=ParseMode.HTML)
         return
     
     conn = db()
@@ -680,18 +670,16 @@ async def start(msg: types.Message):
         text += f"📊 Progress: {user[2]:.1f}%\n"
         text += f"⏳ Next Claim: {user[3] or 'Ready'}\n"
     else:
-        text += "❌ No account linked\n\nClick <b>Add Cookie</b> to setup"
+        text += "❌ No account linked\n\nSend <b>BOTH</b> cookies:\n• atf_tma_session\n• cf_clearance"
     text += "\n\nSelect option:"
     
     await msg.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
-# ✅ FIXED: joined handler
 @dp.callback_query(F.data == "joined")
 async def joined(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
     if await is_member(tg_id):
         await call.message.delete()
-        # ✅ Create new message instead of reusing
         await start(call.message)
     else:
         await call.answer("❌ Not joined yet!", show_alert=True)
@@ -699,12 +687,14 @@ async def joined(call: types.CallbackQuery):
 @dp.callback_query(F.data == "add")
 async def add_cookie(call: types.CallbackQuery):
     await call.message.edit_text(
-        "🍪 <b>Send your cookie</b>\n\n"
+        "🍪 <b>Send BOTH cookies</b>\n\n"
+        "Format:\n"
+        "<code>atf_session: YOUR_atf_tma_session</code>\n"
+        "<code>cf_clearance: YOUR_cf_clearance</code>\n\n"
         "📌 How to get:\n"
         "1. Open ATF in browser\n"
         "2. F12 → Application → Cookies\n"
-        "3. Copy <code>atf_tma_session</code> value\n\n"
-        "Then send your ATF link and cookie.",
+        "3. Copy BOTH values",
         reply_markup=get_back(),
         parse_mode=ParseMode.HTML
     )
@@ -722,7 +712,7 @@ async def balance(call: types.CallbackQuery):
     conn.close()
     
     if not user:
-        await call.message.answer("❌ No account found!\n\nSend your ATF link and cookie first.", reply_markup=get_menu())
+        await call.message.answer("❌ No account found!", reply_markup=get_menu())
         return
     
     text = f"💰 <b>Your Balance</b>\n\n💎 Balance: <code>{user[0]:.4f}</code> ATF\n📈 Level: {user[1]}\n📊 Progress: {user[2]:.1f}%"
@@ -741,20 +731,43 @@ async def stats(call: types.CallbackQuery):
     conn.close()
     
     if not user:
-        await call.message.answer("❌ No account found!\n\nSend your ATF link and cookie first.", reply_markup=get_menu())
+        await call.message.answer("❌ No account found!", reply_markup=get_menu())
         return
     
     text = f"📊 <b>Mining Stats</b>\n\n💰 Balance: <code>{user[0]:.4f}</code> ATF\n📈 Level: {user[1]}\n📊 Progress: {user[2]:.1f}%\n⏳ Next Claim: {user[3] or 'Ready'}\n🔄 Last Tasks: {user[4] or 'Never'}\n💰 Last Claim: {user[5] or 'Never'}"
     await call.message.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
+# ========== FIXED: MINE BUTTON - DOES TASKS + CLAIM ==========
 @dp.callback_query(F.data == "mine")
 async def mine(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
-    await call.answer("⛏️ Mining started!", show_alert=True)
-    process_user(tg_id)
-    await call.message.answer("✅ Mining completed!\n\nCheck your balance with Balance button.", reply_markup=get_menu())
+    await call.answer("⛏️ Mining started! Please wait...", show_alert=True)
+    
+    # ✅ This will do tasks AND claim rewards
+    mine_now(tg_id)
+    
+    # Get updated balance
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
+    user = c.fetchone()
+    conn.close()
+    
+    if user:
+        await call.message.answer(
+            f"✅ <b>Mining Completed!</b>\n\n"
+            f"💰 New Balance: <code>{user[0]:.4f}</code> ATF\n\n"
+            f"Check your balance with Balance button.",
+            reply_markup=get_menu(),
+            parse_mode=ParseMode.HTML
+        )
+    else:
+        await call.message.answer(
+            "✅ <b>Mining Completed!</b>\n\n"
+            "Check your balance with Balance button.",
+            reply_markup=get_menu()
+        )
 
-# ✅ FIXED: back handler
 @dp.callback_query(F.data == "back")
 async def back(call: types.CallbackQuery):
     await call.message.delete()
@@ -769,85 +782,88 @@ async def handle_text(msg: types.Message):
     
     # Detect ATF link
     if "atfminers.asloni.online" in text and "tgWebAppData" in text:
-        # Extract tgWebAppData from link
-        tg_data = extract_tg_data(text)
-        if not tg_data:
-            await msg.answer("❌ Invalid link format!", reply_markup=get_back())
-            return
-        
         conn = db()
         c = conn.cursor()
         c.execute("INSERT OR REPLACE INTO users (tg_id, link, first_name, username) VALUES (?, ?, ?, ?)",
                   (tg_id, text, name, username))
         conn.commit()
         conn.close()
-        
         await msg.answer(
             "✅ <b>Link saved!</b>\n\n"
-            "Now send your <b>Cookie</b> 🍪\n\n"
-            "📌 How to get:\n"
-            "1. Open ATF in browser\n"
-            "2. F12 → Application → Cookies\n"
-            "3. Copy <code>atf_tma_session</code> value",
+            "Now send <b>BOTH</b> cookies:\n"
+            "• <code>atf_tma_session</code>\n"
+            "• <code>cf_clearance</code>\n\n"
+            "Format:\n"
+            "<code>atf_session: YOUR_atf_tma_session</code>\n"
+            "<code>cf_clearance: YOUR_cf_clearance</code>",
             reply_markup=get_back(),
             parse_mode=ParseMode.HTML
         )
         return
     
-    # Detect cookie
-    if "eyJ" in text and len(text) > 50:
-        conn = db()
-        c = conn.cursor()
-        c.execute("SELECT link FROM users WHERE tg_id = ?", (tg_id,))
-        user = c.fetchone()
-        conn.close()
+    # Detect both cookies
+    if "atf_session:" in text and "cf_clearance:" in text:
+        lines = text.split('\n')
+        atf_session = None
+        cf_clearance = None
         
-        if not user or not user[0]:
-            await msg.answer(
-                "❌ <b>Link not found!</b>\n\nFirst send your ATF link, then cookie.",
-                reply_markup=get_back(),
-                parse_mode=ParseMode.HTML
-            )
-            return
+        for line in lines:
+            if "atf_session:" in line:
+                atf_session = line.replace("atf_session:", "").strip()
+            if "cf_clearance:" in line:
+                cf_clearance = line.replace("cf_clearance:", "").strip()
         
-        conn = db()
-        c = conn.cursor()
-        c.execute("UPDATE users SET cookie = ? WHERE tg_id = ?", (text, tg_id))
-        conn.commit()
-        conn.close()
-        
-        # Test sync
-        sync_result = sync_user(tg_id)
-        
-        if sync_result:
+        if atf_session and cf_clearance:
             conn = db()
             c = conn.cursor()
-            c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
+            c.execute("SELECT link FROM users WHERE tg_id = ?", (tg_id,))
             user = c.fetchone()
             conn.close()
             
-            await msg.answer(
-                f"✅ <b>Cookie saved!</b>\n\n💰 Balance: <code>{user[0]:.4f}</code> ATF\n\nBot is now active! 🚀",
-                reply_markup=get_menu(),
-                parse_mode=ParseMode.HTML
-            )
-        else:
-            await msg.answer(
-                "❌ <b>Cookie invalid or expired!</b>\n\n"
-                "Please get a fresh cookie from browser.\n"
-                "1. Open ATF in browser\n"
-                "2. F12 → Application → Cookies\n"
-                "3. Copy <code>atf_tma_session</code> value",
-                reply_markup=get_back(),
-                parse_mode=ParseMode.HTML
-            )
-        return
+            if not user or not user[0]:
+                await msg.answer("❌ <b>Link not found!</b>\n\nFirst send your ATF link.", reply_markup=get_back(), parse_mode=ParseMode.HTML)
+                return
+            
+            conn = db()
+            c = conn.cursor()
+            c.execute("UPDATE users SET atf_session = ?, cf_clearance = ? WHERE tg_id = ?",
+                      (atf_session, cf_clearance, tg_id))
+            conn.commit()
+            conn.close()
+            
+            sync_result = sync_user(tg_id)
+            
+            if sync_result:
+                conn = db()
+                c = conn.cursor()
+                c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
+                user = c.fetchone()
+                conn.close()
+                
+                await msg.answer(
+                    f"✅ <b>Both cookies saved!</b>\n\n💰 Balance: <code>{user[0]:.4f}</code> ATF\n\nBot is now active! 🚀",
+                    reply_markup=get_menu(),
+                    parse_mode=ParseMode.HTML
+                )
+            else:
+                await msg.answer(
+                    "❌ <b>Cookies invalid or expired!</b>\n\n"
+                    "Please get fresh cookies from browser.\n"
+                    "1. Open ATF in browser\n"
+                    "2. F12 → Application → Cookies\n"
+                    "3. Copy BOTH values",
+                    reply_markup=get_back(),
+                    parse_mode=ParseMode.HTML
+                )
+            return
     
     await msg.answer(
         "❌ <b>Invalid input!</b>\n\n"
         "Send either:\n"
-        "• ATF link (full URL with tgWebAppData)\n"
-        "• Cookie (atf_tma_session value)",
+        "• ATF link (full URL)\n"
+        "• BOTH cookies:\n"
+        "  <code>atf_session: YOUR_atf_tma_session</code>\n"
+        "  <code>cf_clearance: YOUR_cf_clearance</code>",
         reply_markup=get_menu(),
         parse_mode=ParseMode.HTML
     )
@@ -864,11 +880,10 @@ def run_flask():
 async def run_bot():
     auto_add_your_account()
     print("=" * 40)
-    print("🚀 ATF Bot Started (FULLY FIXED)")
+    print("🚀 ATF Bot Started (MINE + CLAIM FIX)")
     print("📊 Dashboard: http://localhost:5000")
     print("💬 Support: @xghostid")
-    print("🔄 Auto tasks with cooldown management")
-    print("💰 Auto claim with availability check")
+    print("✅ MINE button = Tasks + Claim")
     print("=" * 40)
     await dp.start_polling(bot)
 
