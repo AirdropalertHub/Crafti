@@ -14,7 +14,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # ========== CONFIG ==========
 # 🔴 IMPORTANT: BotFather se naya token generate karo!
-BOT_TOKEN = "YOUR_NEW_BOT_TOKEN_HERE"
+BOT_TOKEN = "8945533096:AAEVcJ_58_0U1whnxwY5HIxyTp1SsEzsglw"
 CHANNEL_ID = "-1003915320301"
 CHANNEL_LINK = "https://t.me/S4DlI5E"
 ATF_URL = "https://atfminers.asloni.online/miner/index.php"
