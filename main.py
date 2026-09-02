@@ -14,7 +14,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # ========== CONFIG ==========
 BOT_TOKEN = "8945533096:AAEVcJ_58_0U1whnxwY5HIxyTp1SsEzsglw"
-CHANNEL_ID = "-1003915320301"  # Replace with your channel ID
+CHANNEL_ID = "-1003915320301"
+CHANNEL_LINK = "https://t.me/S4DlI5E"
 ATF_URL = "https://atfminers.asloni.online/miner/index.php"
 OWNER = "@xghostid"
 
@@ -379,19 +380,65 @@ dp = Dispatcher()
 
 async def is_member(user_id):
     try:
-        m = await bot.get_chat_member(CHANNEL_ID, user_id)
+        m = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
         return m.status in ["member", "administrator", "creator"]
-    except:
+    except Exception as e:
+        print(f"Member check error: {e}")
         return False
 
+# ========== COLORED BUTTONS ==========
 def menu():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🍪 Add Cookie", callback_data="add")],
-        [InlineKeyboardButton(text="💰 Balance", callback_data="bal"), 
-         InlineKeyboardButton(text="📊 Stats", callback_data="stats")],
-        [InlineKeyboardButton(text="⛏️ Mine Now", callback_data="mine")],
-        [InlineKeyboardButton(text="💬 Support", url="https://t.me/xghostid")]
-    ])
+    """Colored buttons with Primary, Success, Danger styles"""
+    return {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "🍪 Add Cookie",
+                    "callback_data": "add",
+                    "style": "primary"
+                },
+                {
+                    "text": "💰 Balance",
+                    "callback_data": "bal",
+                    "style": "success"
+                }
+            ],
+            [
+                {
+                    "text": "📊 Stats",
+                    "callback_data": "stats",
+                    "style": "primary"
+                },
+                {
+                    "text": "⛏️ Mine Now",
+                    "callback_data": "mine",
+                    "style": "success"
+                }
+            ],
+            [
+                {
+                    "text": "💬 Support",
+                    "url": "https://t.me/xghostid",
+                    "style": "primary"
+                }
+            ]
+        ]
+    }
+
+def back_button():
+    return {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "🔙 Back",
+                    "callback_data": "back",
+                    "style": "primary"
+                }
+            ]
+        ]
+    }
+
+# ========== BOT HANDLERS ==========
 
 @dp.message(Command("start"))
 async def start(msg: types.Message):
@@ -399,12 +446,34 @@ async def start(msg: types.Message):
     name = msg.from_user.first_name or "User"
     username = msg.from_user.username or ""
     
-    if not await is_member(tg_id):
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔔 Join Channel", url="https://t.me/xghostid")],
-            [InlineKeyboardButton(text="✅ Joined", callback_data="joined")]
-        ])
-        await msg.answer(f"👋 Welcome {name}!\nPlease join our channel first.", reply_markup=kb)
+    is_mem = await is_member(tg_id)
+    
+    if not is_mem:
+        kb = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "🔔 Join Channel",
+                        "url": CHANNEL_LINK,
+                        "style": "primary"
+                    }
+                ],
+                [
+                    {
+                        "text": "✅ I've Joined",
+                        "callback_data": "joined",
+                        "style": "success"
+                    }
+                ]
+            ]
+        }
+        await msg.answer(
+            f"👋 Welcome {name}!\n\n"
+            f"⚠️ Please join our channel first.\n\n"
+            f"🔗 {CHANNEL_LINK}",
+            reply_markup=json.dumps(kb),
+            parse_mode=ParseMode.HTML
+        )
         return
     
     conn = db()
@@ -415,39 +484,42 @@ async def start(msg: types.Message):
     conn.commit()
     conn.close()
     
-    text = "🚀 ATF Bot\n\n"
+    text = "🚀 <b>ATF Bot</b>\n\n"
     if user:
-        text += f"💰 Balance: {user[0]:.4f} ATF\n"
+        text += f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n"
     else:
-        text += "❌ No account linked\n"
-    text += "\nSelect option:"
+        text += "❌ No account linked\n\n"
+        text += "Click <b>Add Cookie</b> to setup"
+    text += "\n\nSelect option:"
     
-    await msg.answer(text, reply_markup=menu())
+    await msg.answer(text, reply_markup=json.dumps(menu()), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "joined")
-async def joined(call):
+async def joined(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
-    if await is_member(tg_id):
+    is_mem = await is_member(tg_id)
+    
+    if is_mem:
         await call.message.delete()
         await start(call.message)
     else:
         await call.answer("❌ Not joined yet!", show_alert=True)
 
 @dp.callback_query(F.data == "add")
-async def add_cookie(call):
+async def add_cookie(call: types.CallbackQuery):
     await call.message.edit_text(
-        "🍪 Send your cookie:\n\n"
+        "🍪 <b>Send your cookie</b>\n\n"
         "📌 How to get:\n"
         "1. Open ATF in browser\n"
         "2. F12 → Application → Cookies\n"
-        "3. Copy 'atf_tma_session' value",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔙 Back", callback_data="back")]
-        ])
+        "3. Copy <code>atf_tma_session</code> value\n\n"
+        "Send the cookie value:",
+        reply_markup=json.dumps(back_button()),
+        parse_mode=ParseMode.HTML
     )
 
 @dp.callback_query(F.data == "bal")
-async def balance(call):
+async def balance(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
     await call.answer("Fetching...")
     sync_user(tg_id)
@@ -459,14 +531,22 @@ async def balance(call):
     conn.close()
     
     if not user:
-        await call.message.edit_text("❌ Add cookie first!", reply_markup=menu())
+        await call.message.edit_text(
+            "❌ No account found!\n\nClick <b>Add Cookie</b> to setup.",
+            reply_markup=json.dumps(menu()),
+            parse_mode=ParseMode.HTML
+        )
         return
     
-    text = f"💰 Balance: {user[0]:.4f} ATF\n📈 Level: {user[1]}\n📊 Progress: {user[2]:.1f}%"
-    await call.message.edit_text(text, reply_markup=menu())
+    text = f"💰 <b>Balance</b>\n\n"
+    text += f"💎 Balance: <code>{user[0]:.4f}</code> ATF\n"
+    text += f"📈 Level: {user[1]}\n"
+    text += f"📊 Progress: {user[2]:.1f}%"
+    
+    await call.message.edit_text(text, reply_markup=json.dumps(menu()), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "stats")
-async def stats(call):
+async def stats(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
     await call.answer("Loading...")
     sync_user(tg_id)
@@ -478,28 +558,33 @@ async def stats(call):
     conn.close()
     
     if not user:
-        await call.message.edit_text("❌ Add cookie first!", reply_markup=menu())
+        await call.message.edit_text(
+            "❌ No account found!\n\nClick <b>Add Cookie</b> to setup.",
+            reply_markup=json.dumps(menu()),
+            parse_mode=ParseMode.HTML
+        )
         return
     
-    text = f"📊 Stats\n\n"
-    text += f"💰 Balance: {user[0]:.4f} ATF\n"
+    text = f"📊 <b>Mining Stats</b>\n\n"
+    text += f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n"
     text += f"📈 Level: {user[1]}\n"
     text += f"📊 Progress: {user[2]:.1f}%\n"
     text += f"⏳ Next Claim: {user[3] or 'Ready'}\n"
     text += f"🔄 Last Tasks: {user[4] or 'Never'}\n"
     text += f"💰 Last Claim: {user[5] or 'Never'}"
     
-    await call.message.edit_text(text, reply_markup=menu())
+    await call.message.edit_text(text, reply_markup=json.dumps(menu()), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "mine")
-async def mine(call):
+async def mine(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
-    await call.answer("⛏️ Mining started!")
+    await call.answer("⛏️ Mining started!", show_alert=True)
     process_user(tg_id)
     await balance(call)
 
 @dp.callback_query(F.data == "back")
-async def back(call):
+async def back(call: types.CallbackQuery):
+    await call.message.delete()
     await start(call.message)
 
 @dp.message(F.text)
@@ -515,7 +600,11 @@ async def handle_text(msg: types.Message):
         conn.close()
         
         if not user:
-            await msg.answer("❌ First send your ATF link!\n\nSend the full URL from browser.")
+            await msg.answer(
+                "❌ First send your ATF link!\n\n"
+                "Send the full URL from browser.",
+                reply_markup=json.dumps(back_button())
+            )
             return
         
         conn = db()
@@ -525,7 +614,7 @@ async def handle_text(msg: types.Message):
         conn.close()
         
         sync_user(tg_id)
-        await msg.answer("✅ Cookie saved!", reply_markup=menu())
+        await msg.answer("✅ Cookie saved!", reply_markup=json.dumps(menu()))
         return
     
     if "atfminers.asloni.online" in text:
@@ -534,10 +623,19 @@ async def handle_text(msg: types.Message):
         c.execute("INSERT OR REPLACE INTO users (tg_id, link) VALUES (?, ?)", (tg_id, text))
         conn.commit()
         conn.close()
-        await msg.answer("✅ Link saved!\nNow send your cookie 🍪")
+        await msg.answer(
+            "✅ Link saved!\n\nNow send your cookie 🍪",
+            reply_markup=json.dumps(back_button())
+        )
         return
     
-    await msg.answer("❌ Send valid link or cookie", reply_markup=menu())
+    await msg.answer(
+        "❌ Invalid input!\n\n"
+        "Send either:\n"
+        "• ATF link (full URL)\n"
+        "• Cookie (atf_tma_session)",
+        reply_markup=json.dumps(menu())
+    )
 
 # ========== SCHEDULER ==========
 scheduler = BackgroundScheduler()
@@ -549,9 +647,12 @@ def run_flask():
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 
 async def run_bot():
-    print("🚀 Bot Started")
+    print("=" * 40)
+    print("🚀 ATF Bot Started")
     print("📊 Dashboard: http://localhost:5000")
     print("💬 Support: @xghostid")
+    print("📢 Channel: https://t.me/S4DlI5E")
+    print("=" * 40)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
