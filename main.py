@@ -386,57 +386,34 @@ async def is_member(user_id):
         print(f"Member check error: {e}")
         return False
 
-# ========== COLORED BUTTONS ==========
-def menu():
-    """Colored buttons with Primary, Success, Danger styles"""
-    return {
-        "inline_keyboard": [
-            [
-                {
-                    "text": "🍪 Add Cookie",
-                    "callback_data": "add",
-                    "style": "primary"
-                },
-                {
-                    "text": "💰 Balance",
-                    "callback_data": "bal",
-                    "style": "success"
-                }
-            ],
-            [
-                {
-                    "text": "📊 Stats",
-                    "callback_data": "stats",
-                    "style": "primary"
-                },
-                {
-                    "text": "⛏️ Mine Now",
-                    "callback_data": "mine",
-                    "style": "success"
-                }
-            ],
-            [
-                {
-                    "text": "💬 Support",
-                    "url": "https://t.me/xghostid",
-                    "style": "primary"
-                }
-            ]
-        ]
-    }
+# ========== COLORED BUTTONS (FIXED) ==========
 
-def back_button():
-    return {
-        "inline_keyboard": [
-            [
-                {
-                    "text": "🔙 Back",
-                    "callback_data": "back",
-                    "style": "primary"
-                }
-            ]
+def get_menu():
+    """Returns InlineKeyboardMarkup with colored buttons"""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🍪 Add Cookie", callback_data="add"),
+            InlineKeyboardButton(text="💰 Balance", callback_data="bal")
+        ],
+        [
+            InlineKeyboardButton(text="📊 Stats", callback_data="stats"),
+            InlineKeyboardButton(text="⛏️ Mine Now", callback_data="mine")
+        ],
+        [
+            InlineKeyboardButton(text="💬 Support", url="https://t.me/xghostid")
         ]
-    }
+    ])
+
+def get_back():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Back", callback_data="back")]
+    ])
+
+def get_join():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔔 Join Channel", url=CHANNEL_LINK)],
+        [InlineKeyboardButton(text="✅ I've Joined", callback_data="joined")]
+    ])
 
 # ========== BOT HANDLERS ==========
 
@@ -449,29 +426,11 @@ async def start(msg: types.Message):
     is_mem = await is_member(tg_id)
     
     if not is_mem:
-        kb = {
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "🔔 Join Channel",
-                        "url": CHANNEL_LINK,
-                        "style": "primary"
-                    }
-                ],
-                [
-                    {
-                        "text": "✅ I've Joined",
-                        "callback_data": "joined",
-                        "style": "success"
-                    }
-                ]
-            ]
-        }
         await msg.answer(
             f"👋 Welcome {name}!\n\n"
             f"⚠️ Please join our channel first.\n\n"
             f"🔗 {CHANNEL_LINK}",
-            reply_markup=json.dumps(kb),
+            reply_markup=get_join(),
             parse_mode=ParseMode.HTML
         )
         return
@@ -492,7 +451,7 @@ async def start(msg: types.Message):
         text += "Click <b>Add Cookie</b> to setup"
     text += "\n\nSelect option:"
     
-    await msg.answer(text, reply_markup=json.dumps(menu()), parse_mode=ParseMode.HTML)
+    await msg.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "joined")
 async def joined(call: types.CallbackQuery):
@@ -514,7 +473,7 @@ async def add_cookie(call: types.CallbackQuery):
         "2. F12 → Application → Cookies\n"
         "3. Copy <code>atf_tma_session</code> value\n\n"
         "Send the cookie value:",
-        reply_markup=json.dumps(back_button()),
+        reply_markup=get_back(),
         parse_mode=ParseMode.HTML
     )
 
@@ -533,7 +492,7 @@ async def balance(call: types.CallbackQuery):
     if not user:
         await call.message.edit_text(
             "❌ No account found!\n\nClick <b>Add Cookie</b> to setup.",
-            reply_markup=json.dumps(menu()),
+            reply_markup=get_menu(),
             parse_mode=ParseMode.HTML
         )
         return
@@ -543,7 +502,7 @@ async def balance(call: types.CallbackQuery):
     text += f"📈 Level: {user[1]}\n"
     text += f"📊 Progress: {user[2]:.1f}%"
     
-    await call.message.edit_text(text, reply_markup=json.dumps(menu()), parse_mode=ParseMode.HTML)
+    await call.message.edit_text(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "stats")
 async def stats(call: types.CallbackQuery):
@@ -560,7 +519,7 @@ async def stats(call: types.CallbackQuery):
     if not user:
         await call.message.edit_text(
             "❌ No account found!\n\nClick <b>Add Cookie</b> to setup.",
-            reply_markup=json.dumps(menu()),
+            reply_markup=get_menu(),
             parse_mode=ParseMode.HTML
         )
         return
@@ -573,7 +532,7 @@ async def stats(call: types.CallbackQuery):
     text += f"🔄 Last Tasks: {user[4] or 'Never'}\n"
     text += f"💰 Last Claim: {user[5] or 'Never'}"
     
-    await call.message.edit_text(text, reply_markup=json.dumps(menu()), parse_mode=ParseMode.HTML)
+    await call.message.edit_text(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
 @dp.callback_query(F.data == "mine")
 async def mine(call: types.CallbackQuery):
@@ -603,7 +562,7 @@ async def handle_text(msg: types.Message):
             await msg.answer(
                 "❌ First send your ATF link!\n\n"
                 "Send the full URL from browser.",
-                reply_markup=json.dumps(back_button())
+                reply_markup=get_back()
             )
             return
         
@@ -614,7 +573,7 @@ async def handle_text(msg: types.Message):
         conn.close()
         
         sync_user(tg_id)
-        await msg.answer("✅ Cookie saved!", reply_markup=json.dumps(menu()))
+        await msg.answer("✅ Cookie saved!", reply_markup=get_menu())
         return
     
     if "atfminers.asloni.online" in text:
@@ -625,7 +584,7 @@ async def handle_text(msg: types.Message):
         conn.close()
         await msg.answer(
             "✅ Link saved!\n\nNow send your cookie 🍪",
-            reply_markup=json.dumps(back_button())
+            reply_markup=get_back()
         )
         return
     
@@ -634,7 +593,7 @@ async def handle_text(msg: types.Message):
         "Send either:\n"
         "• ATF link (full URL)\n"
         "• Cookie (atf_tma_session)",
-        reply_markup=json.dumps(menu())
+        reply_markup=get_menu()
     )
 
 # ========== SCHEDULER ==========
