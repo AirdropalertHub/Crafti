@@ -13,7 +13,6 @@ from aiogram.enums import ParseMode
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # ========== CONFIG ==========
-# 🔴 IMPORTANT: BotFather se naya token generate karo!
 BOT_TOKEN = "8945533096:AAEVcJ_58_0U1whnxwY5HIxyTp1SsEzsglw"
 CHANNEL_ID = "-1003915320301"
 CHANNEL_LINK = "https://t.me/S4DlI5E"
@@ -83,7 +82,7 @@ def extract_tg_data(link):
     params = urllib.parse.parse_qs(parsed.query)
     return params.get('tgWebAppData', [None])[0]
 
-# ========== SYNC USER ==========
+# ========== SYNC USER - FIXED WITH CORRECT FIELD NAMES ==========
 def sync_user(tg_id):
     conn = db()
     c = conn.cursor()
@@ -107,11 +106,13 @@ def sync_user(tg_id):
         return
 
     try:
+        # ✅ CORRECT: API se data user object ke andar aata hai
         data = res.get("user", {})
         
-        pool = float(data.get("pool_wallet", 0))
-        holding = float(data.get("holding_wallet", 0))
-        balance = float(data.get("assets_total", pool + holding))
+        # ✅ FIXED: Correct field names from screenshot
+        mined = float(data.get("mined_balance", 0))           # pool_wallet nahi
+        holding = float(data.get("wallet_holding_atf", 0))    # holding_wallet nahi
+        balance = float(data.get("assets_total", mined + holding))
         level = int(data.get("miner_level", 1))
         progress = float(data.get("level_pending_withdraw_atf", 0))
         completed = data.get("completed_tasks", [])
@@ -130,7 +131,7 @@ def sync_user(tg_id):
                 last_task = CURRENT_TIMESTAMP
             WHERE tg_id = ?
         """, (
-            pool,
+            mined,
             holding,
             balance,
             level,
@@ -142,10 +143,11 @@ def sync_user(tg_id):
         conn.commit()
         conn.close()
 
-        print(f"[SYNC] {tg_id} | Pool={pool} | Holding={holding} | Balance={balance} | Level={level}")
+        print(f"[SYNC] {tg_id} | Mined={mined} | Holding={holding} | Balance={balance} | Level={level}")
 
     except Exception as e:
         print(f"[SYNC PARSE ERROR] {tg_id}: {e}")
+        print(f"[SYNC RAW] {tg_id}: {res}")
 
 # ========== DO TASKS ==========
 def do_tasks(tg_id):
@@ -196,17 +198,18 @@ def claim_rewards(tg_id):
         conn = db()
         c = conn.cursor()
         
+        # ✅ FIXED: Correct field names for claim response
         data = res.get("user", {})
-        new_pool = float(data.get("pool_wallet", 0))
-        holding = float(data.get("holding_wallet", 0))
-        balance = float(data.get("assets_total", new_pool + holding))
+        new_mined = float(data.get("mined_balance", 0))
+        holding = float(data.get("wallet_holding_atf", 0))
+        balance = float(data.get("assets_total", new_mined + holding))
         
         c.execute("""UPDATE users SET 
             pool = ?, holding = ?, balance = ?,
             last_claim = CURRENT_TIMESTAMP,
             next_claim = datetime('now', '+6 hours')
             WHERE tg_id = ?""", (
-            new_pool,
+            new_mined,
             holding,
             balance,
             tg_id
@@ -434,10 +437,9 @@ async def is_member(user_id):
         print(f"Member check error: {e}")
         return False
 
-# ========== COLORED BUTTONS (DICT STYLE WITH STYLE PROPERTIES) ==========
+# ========== COLORED BUTTONS (DICT STYLE) ==========
 
 def get_menu():
-    """Colored buttons with Primary, Success, Danger styles"""
     return {
         "inline_keyboard": [
             [
