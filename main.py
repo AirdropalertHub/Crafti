@@ -42,6 +42,7 @@ def init_db():
     )''')
     conn.commit()
     conn.close()
+    print("✅ Database initialized!")
 
 init_db()
 
@@ -71,7 +72,7 @@ def call_atf(tg_data, cookie, action, extra=None):
         r = sess.post(url, json=payload, timeout=15)
         if r.status_code == 200:
             return r.json()
-        return {"status": "error"}
+        return {"status": "error", "code": r.status_code}
     except Exception as e:
         print(f"API Error: {e}")
         return {"status": "error"}
@@ -82,7 +83,7 @@ def extract_tg_data(link):
     params = urllib.parse.parse_qs(parsed.query)
     return params.get('tgWebAppData', [None])[0]
 
-# ========== SYNC USER - CORRECT API FIELDS ==========
+# ========== SYNC USER ==========
 def sync_user(tg_id):
     conn = db()
     c = conn.cursor()
@@ -90,13 +91,21 @@ def sync_user(tg_id):
     user = c.fetchone()
     conn.close()
 
-    if not user or not user[1]:
-        print(f"[SYNC] {tg_id}: No link or cookie")
+    if not user:
+        print(f"[SYNC] {tg_id}: User not found in database")
+        return
+
+    if not user[0]:
+        print(f"[SYNC] {tg_id}: No link found")
+        return
+
+    if not user[1]:
+        print(f"[SYNC] {tg_id}: No cookie found")
         return
 
     tg_data = extract_tg_data(user[0])
     if not tg_data:
-        print(f"[SYNC] {tg_id}: No tgWebAppData")
+        print(f"[SYNC] {tg_id}: Failed to extract tgWebAppData from link")
         return
 
     res = call_atf(tg_data, user[1], "sync_wallet")
@@ -141,10 +150,12 @@ def sync_user(tg_id):
         conn.commit()
         conn.close()
 
-        print(f"[SYNC] {tg_id} | Mined={mined} | Holding={holding} | Balance={balance} | Level={level}")
+        print(f"[SYNC] {tg_id} | Balance={balance} | Level={level}")
+        return True
 
     except Exception as e:
         print(f"[SYNC PARSE ERROR] {tg_id}: {e}")
+        return False
 
 # ========== DO TASKS ==========
 def do_tasks(tg_id):
@@ -393,13 +404,25 @@ def add_user():
     
     conn = db()
     c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO users (tg_id, link, cookie, first_name) VALUES (?, ?, ?, ?)", 
-              (tg_id, link, cookie, name))
+    
+    # Check if user exists
+    c.execute("SELECT tg_id FROM users WHERE tg_id = ?", (tg_id,))
+    exists = c.fetchone()
+    
+    if exists:
+        c.execute("UPDATE users SET link = ?, cookie = ?, first_name = ? WHERE tg_id = ?", 
+                  (link, cookie, name, tg_id))
+    else:
+        c.execute("INSERT INTO users (tg_id, link, cookie, first_name) VALUES (?, ?, ?, ?)", 
+                  (tg_id, link, cookie, name))
+    
     conn.commit()
     conn.close()
     
+    # Sync immediately
     sync_user(tg_id)
-    return jsonify({'ok': True})
+    
+    return jsonify({'ok': True, 'message': 'User added successfully!'})
 
 @app.route('/api/balance/<tg_id>')
 def get_balance(tg_id):
@@ -421,6 +444,23 @@ def get_balance(tg_id):
 def refresh_user(tg_id):
     process_user(tg_id)
     return jsonify({'ok': True})
+
+@app.route('/api/debug/<tg_id>')
+def debug_user(tg_id):
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE tg_id = ?", (tg_id,))
+    user = c.fetchone()
+    conn.close()
+    if not user:
+        return jsonify({'error': 'User not found'})
+    return jsonify({
+        'tg_id': user[0],
+        'has_link': bool(user[1]),
+        'has_cookie': bool(user[2]),
+        'balance': user[3],
+        'level': user[6]
+    })
     # ========== TELEGRAM BOT ==========
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -525,20 +565,30 @@ async def start(msg: types.Message):
         )
         return
     
+    # Check if user exists in DB
     conn = db()
     c = conn.cursor()
-    c.execute("UPDATE users SET first_name = ?, username = ? WHERE tg_id = ?", (name, username, tg_id))
-    c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
+    c.execute("SELECT balance, link, cookie FROM users WHERE tg_id = ?", (tg_id,))
     user = c.fetchone()
-    conn.commit()
+    
+    if not user:
+        # Create user entry
+        c.execute("INSERT OR IGNORE INTO users (tg_id, first_name, username) VALUES (?, ?, ?)", 
+                  (tg_id, name, username))
+        conn.commit()
+        user = (0, None, None)
+    
     conn.close()
     
     text = "🚀 <b>ATF Bot</b>\n\n"
-    if user:
+    
+    if user[1] and user[2]:
         text += f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n"
+        text += "✅ Account linked\n"
     else:
         text += "❌ No account linked\n\n"
-        text += "Click <b>Add Cookie</b> to setup"
+        text += "Send your <b>ATF Link</b> first, then Cookie 🍪"
+    
     text += "\n\nSelect option:"
     
     await msg.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
@@ -557,23 +607,23 @@ async def joined(call: types.CallbackQuery):
 @dp.callback_query(F.data == "add")
 async def add_cookie(call: types.CallbackQuery):
     await call.message.edit_text(
-        "🍪 <b>Send your cookie</b>\n\n"
+        "🍪 <b>Step 1: Send your ATF Link</b>\n\n"
         "📌 How to get:\n"
-        "1. Open ATF in browser\n"
-        "2. F12 → Application → Cookies\n"
-        "3. Copy <code>atf_tma_session</code> value\n\n"
-        "Send the cookie value:",
+        "1. Open ATF app on Telegram\n"
+        "2. Copy the full URL from browser\n"
+        "3. Send it here\n\n"
+        "Example:\n"
+        "<code>https://atfminers.asloni.online/miner/index.html?tgWebAppData=...</code>\n\n"
+        "After link, send your cookie 🍪",
         reply_markup=get_back(),
         parse_mode=ParseMode.HTML
     )
 
-# ========== BALANCE - NEW MESSAGE, NO EDIT ==========
 @dp.callback_query(F.data == "bal")
 async def balance(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
     await call.answer("Fetching...")
     
-    # Sync latest data
     sync_user(tg_id)
     
     conn = db()
@@ -584,13 +634,13 @@ async def balance(call: types.CallbackQuery):
     
     if not user:
         await call.message.answer(
-            "❌ No account found!\n\nClick <b>Add Cookie</b> to setup.",
+            "❌ No account found!\n\n"
+            "Send your ATF Link and Cookie first.",
             reply_markup=get_menu(),
             parse_mode=ParseMode.HTML
         )
         return
     
-    # ✅ NEW MESSAGE - NO EDIT
     text = f"💰 <b>Your Balance</b>\n\n"
     text += f"💎 Balance: <code>{user[0]:.4f}</code> ATF\n"
     text += f"📈 Level: {user[1]}\n"
@@ -598,7 +648,6 @@ async def balance(call: types.CallbackQuery):
     
     await call.message.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
-# ========== STATS - NEW MESSAGE ==========
 @dp.callback_query(F.data == "stats")
 async def stats(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
@@ -613,13 +662,13 @@ async def stats(call: types.CallbackQuery):
     
     if not user:
         await call.message.answer(
-            "❌ No account found!\n\nClick <b>Add Cookie</b> to setup.",
+            "❌ No account found!\n\n"
+            "Send your ATF Link and Cookie first.",
             reply_markup=get_menu(),
             parse_mode=ParseMode.HTML
         )
         return
     
-    # ✅ NEW MESSAGE - NO EDIT
     text = f"📊 <b>Mining Stats</b>\n\n"
     text += f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n"
     text += f"📈 Level: {user[1]}\n"
@@ -630,7 +679,6 @@ async def stats(call: types.CallbackQuery):
     
     await call.message.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
 
-# ========== MINE - NEW MESSAGE ==========
 @dp.callback_query(F.data == "mine")
 async def mine(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
@@ -638,10 +686,9 @@ async def mine(call: types.CallbackQuery):
     
     process_user(tg_id)
     
-    # ✅ NEW MESSAGE - NO EDIT
     await call.message.answer(
         "✅ Mining completed!\n\n"
-        "Check your balance with /start or Balance button.",
+        "Check your balance with Balance button.",
         reply_markup=get_menu()
     )
 
@@ -650,11 +697,37 @@ async def back(call: types.CallbackQuery):
     await call.message.delete()
     await start(call.message)
 
+# ========== HANDLE LINK AND COOKIE ==========
 @dp.message(F.text)
 async def handle_text(msg: types.Message):
     text = msg.text.strip()
     tg_id = str(msg.from_user.id)
+    name = msg.from_user.first_name or "User"
+    username = msg.from_user.username or ""
     
+    # STEP 1: Check if it's an ATF link
+    if "atfminers.asloni.online" in text and "tgWebAppData" in text:
+        conn = db()
+        c = conn.cursor()
+        c.execute("INSERT OR REPLACE INTO users (tg_id, link, first_name, username) VALUES (?, ?, ?, ?)", 
+                  (tg_id, text, name, username))
+        conn.commit()
+        conn.close()
+        
+        await msg.answer(
+            "✅ <b>Link saved!</b>\n\n"
+            "Now send your <b>Cookie</b> 🍪\n\n"
+            "📌 How to get:\n"
+            "1. Open ATF in browser\n"
+            "2. Press F12 → Application tab\n"
+            "3. Click Cookies → atfminers.asloni.online\n"
+            "4. Copy <code>atf_tma_session</code> value",
+            reply_markup=get_back(),
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    # STEP 2: Check if it's a cookie (JWT token)
     if "eyJ" in text and len(text) > 50:
         conn = db()
         c = conn.cursor()
@@ -662,42 +735,57 @@ async def handle_text(msg: types.Message):
         user = c.fetchone()
         conn.close()
         
-        if not user:
+        if not user or not user[0]:
             await msg.answer(
-                "❌ First send your ATF link!\n\n"
-                "Send the full URL from browser.",
-                reply_markup=get_back()
+                "❌ <b>Link not found!</b>\n\n"
+                "First send your ATF link, then cookie.",
+                reply_markup=get_back(),
+                parse_mode=ParseMode.HTML
             )
             return
         
+        # Save cookie
         conn = db()
         c = conn.cursor()
         c.execute("UPDATE users SET cookie = ? WHERE tg_id = ?", (text, tg_id))
         conn.commit()
         conn.close()
         
+        # Sync user data
         sync_user(tg_id)
-        await msg.answer("✅ Cookie saved!", reply_markup=get_menu())
-        return
-    
-    if "atfminers.asloni.online" in text:
+        
+        # Get updated balance
         conn = db()
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO users (tg_id, link) VALUES (?, ?)", (tg_id, text))
-        conn.commit()
+        c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
+        user = c.fetchone()
         conn.close()
-        await msg.answer(
-            "✅ Link saved!\n\nNow send your cookie 🍪",
-            reply_markup=get_back()
-        )
+        
+        if user and user[0] > 0:
+            await msg.answer(
+                f"✅ <b>Cookie saved!</b>\n\n"
+                f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n\n"
+                f"Bot is now active! 🚀",
+                reply_markup=get_menu(),
+                parse_mode=ParseMode.HTML
+            )
+        else:
+            await msg.answer(
+                "✅ <b>Cookie saved!</b>\n\n"
+                "Syncing data... Please wait a moment.\n"
+                "Then click 'Balance' to check.",
+                reply_markup=get_menu(),
+                parse_mode=ParseMode.HTML
+            )
         return
     
     await msg.answer(
-        "❌ Invalid input!\n\n"
+        "❌ <b>Invalid input!</b>\n\n"
         "Send either:\n"
-        "• ATF link (full URL)\n"
-        "• Cookie (atf_tma_session)",
-        reply_markup=get_menu()
+        "• ATF link (full URL with tgWebAppData)\n"
+        "• Cookie (atf_tma_session value)",
+        reply_markup=get_menu(),
+        parse_mode=ParseMode.HTML
     )
 
 # ========== SCHEDULER ==========
