@@ -82,7 +82,7 @@ def extract_tg_data(link):
     params = urllib.parse.parse_qs(parsed.query)
     return params.get('tgWebAppData', [None])[0]
 
-# ========== SYNC USER - FIXED WITH CORRECT FIELD NAMES ==========
+# ========== SYNC USER - FIXED ==========
 def sync_user(tg_id):
     conn = db()
     c = conn.cursor()
@@ -90,13 +90,21 @@ def sync_user(tg_id):
     user = c.fetchone()
     conn.close()
 
-    if not user or not user[1]:
-        print(f"[SYNC] {tg_id}: No link or cookie")
+    if not user:
+        print(f"[SYNC] {tg_id}: User not found in DB")
+        return
+    
+    if not user[0]:
+        print(f"[SYNC] {tg_id}: No link")
+        return
+    
+    if not user[1]:
+        print(f"[SYNC] {tg_id}: No cookie")
         return
 
     tg_data = extract_tg_data(user[0])
     if not tg_data:
-        print(f"[SYNC] {tg_id}: No tgWebAppData")
+        print(f"[SYNC] {tg_id}: No tgWebAppData in link")
         return
 
     res = call_atf(tg_data, user[1], "sync_wallet")
@@ -106,12 +114,12 @@ def sync_user(tg_id):
         return
 
     try:
-        # ✅ CORRECT: API se data user object ke andar aata hai
+        # ✅ CORRECT: API data user object ke andar
         data = res.get("user", {})
         
-        # ✅ FIXED: Correct field names from screenshot
-        mined = float(data.get("mined_balance", 0))           # pool_wallet nahi
-        holding = float(data.get("wallet_holding_atf", 0))    # holding_wallet nahi
+        # ✅ CORRECT field names
+        mined = float(data.get("mined_balance", 0))
+        holding = float(data.get("wallet_holding_atf", 0))
         balance = float(data.get("assets_total", mined + holding))
         level = int(data.get("miner_level", 1))
         progress = float(data.get("level_pending_withdraw_atf", 0))
@@ -144,10 +152,11 @@ def sync_user(tg_id):
         conn.close()
 
         print(f"[SYNC] {tg_id} | Mined={mined} | Holding={holding} | Balance={balance} | Level={level}")
+        return True
 
     except Exception as e:
         print(f"[SYNC PARSE ERROR] {tg_id}: {e}")
-        print(f"[SYNC RAW] {tg_id}: {res}")
+        return False
 
 # ========== DO TASKS ==========
 def do_tasks(tg_id):
@@ -198,7 +207,6 @@ def claim_rewards(tg_id):
         conn = db()
         c = conn.cursor()
         
-        # ✅ FIXED: Correct field names for claim response
         data = res.get("user", {})
         new_mined = float(data.get("mined_balance", 0))
         holding = float(data.get("wallet_holding_atf", 0))
@@ -437,7 +445,7 @@ async def is_member(user_id):
         print(f"Member check error: {e}")
         return False
 
-# ========== COLORED BUTTONS (DICT STYLE) ==========
+# ========== COLORED BUTTONS ==========
 
 def get_menu():
     return {
@@ -509,6 +517,22 @@ def get_join():
         ]
     }
 
+# ========== SAFE EDIT TEXT FUNCTION (FIXES "message not modified" error) ==========
+async def safe_edit(call, text, reply_markup=None, parse_mode=ParseMode.HTML):
+    """Edit message safely - handles 'message not modified' error"""
+    try:
+        await call.message.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+    except Exception as e:
+        if "message is not modified" in str(e):
+            # Message same hai, just answer callback
+            await call.answer()
+        else:
+            # Koi aur error hai
+            print(f"Edit error: {e}")
+            # Try sending new message instead
+            await call.message.delete()
+            await call.message.answer(text, reply_markup=reply_markup, parse_mode=parse_mode)
+
 # ========== BOT HANDLERS ==========
 
 @dp.message(Command("start"))
@@ -538,7 +562,7 @@ async def start(msg: types.Message):
     conn.close()
     
     text = "🚀 <b>ATF Bot</b>\n\n"
-    if user:
+    if user and user[0] > 0:
         text += f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n"
     else:
         text += "❌ No account linked\n\n"
@@ -560,21 +584,23 @@ async def joined(call: types.CallbackQuery):
 
 @dp.callback_query(F.data == "add")
 async def add_cookie(call: types.CallbackQuery):
-    await call.message.edit_text(
+    await safe_edit(
+        call,
         "🍪 <b>Send your cookie</b>\n\n"
         "📌 How to get:\n"
         "1. Open ATF in browser\n"
         "2. F12 → Application → Cookies\n"
         "3. Copy <code>atf_tma_session</code> value\n\n"
         "Send the cookie value:",
-        reply_markup=get_back(),
-        parse_mode=ParseMode.HTML
+        reply_markup=get_back()
     )
 
 @dp.callback_query(F.data == "bal")
 async def balance(call: types.CallbackQuery):
-    tg_id = str(call.from_user.id)
     await call.answer("Fetching...")
+    tg_id = str(call.from_user.id)
+    
+    # Force sync
     sync_user(tg_id)
     
     conn = db()
@@ -583,12 +609,9 @@ async def balance(call: types.CallbackQuery):
     user = c.fetchone()
     conn.close()
     
-    if not user:
-        await call.message.edit_text(
-            "❌ No account found!\n\nClick <b>Add Cookie</b> to setup.",
-            reply_markup=get_menu(),
-            parse_mode=ParseMode.HTML
-        )
+    if not user or user[0] == 0:
+        text = "❌ No account found!\n\nClick <b>Add Cookie</b> to setup."
+        await safe_edit(call, text, reply_markup=get_menu())
         return
     
     text = f"💰 <b>Balance</b>\n\n"
@@ -596,12 +619,13 @@ async def balance(call: types.CallbackQuery):
     text += f"📈 Level: {user[1]}\n"
     text += f"📊 Progress: {user[2]:.1f}%"
     
-    await call.message.edit_text(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
+    await safe_edit(call, text, reply_markup=get_menu())
 
 @dp.callback_query(F.data == "stats")
 async def stats(call: types.CallbackQuery):
-    tg_id = str(call.from_user.id)
     await call.answer("Loading...")
+    tg_id = str(call.from_user.id)
+    
     sync_user(tg_id)
     
     conn = db()
@@ -610,12 +634,9 @@ async def stats(call: types.CallbackQuery):
     user = c.fetchone()
     conn.close()
     
-    if not user:
-        await call.message.edit_text(
-            "❌ No account found!\n\nClick <b>Add Cookie</b> to setup.",
-            reply_markup=get_menu(),
-            parse_mode=ParseMode.HTML
-        )
+    if not user or user[0] == 0:
+        text = "❌ No account found!\n\nClick <b>Add Cookie</b> to setup."
+        await safe_edit(call, text, reply_markup=get_menu())
         return
     
     text = f"📊 <b>Mining Stats</b>\n\n"
@@ -626,7 +647,7 @@ async def stats(call: types.CallbackQuery):
     text += f"🔄 Last Tasks: {user[4] or 'Never'}\n"
     text += f"💰 Last Claim: {user[5] or 'Never'}"
     
-    await call.message.edit_text(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
+    await safe_edit(call, text, reply_markup=get_menu())
 
 @dp.callback_query(F.data == "mine")
 async def mine(call: types.CallbackQuery):
@@ -666,6 +687,7 @@ async def handle_text(msg: types.Message):
         conn.commit()
         conn.close()
         
+        # Force sync after cookie add
         sync_user(tg_id)
         await msg.answer("✅ Cookie saved!", reply_markup=get_menu())
         return
