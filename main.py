@@ -25,8 +25,10 @@ OWNER = "@xghostid"
 # ========== YOUR DATA ==========
 YOUR_TG_ID = "8497620413"
 YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1786140012#tgWebAppData=user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26chat_instance%3D-968499519986194590%26chat_type%3Dsender%26auth_date%3D1788372127%26signature%3D9nlbLAPTBTsFgMMk55AoyrC3WOqON4MXUAfEBYLJSBufD2u3G2QCTGIvAa19aIz-A_-lmIMPNxn4Ogqqb9lQBA%26hash%3De16352f1bf1356b02788a3c45b86f7c4880a71242d9494dcdab0b962e91d41ab&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppFullscreen=1&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
-YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4MzkyMDE5LCJleHAiOjE3ODg1NjQ4MTl9.0HcL_k2YfZAT3bWj92SkTRCJxtzMl3EP4t4b2zfINoU"
-YOUR_CF_CLEARANCE = "5hnY5bcu.2g24gfIgioqIqFjrwsHC1XRuNO4qmG5bP4-1788392020-1.2.1.1-lRw5bet2zMzYZ96YK4z0sFcWEfKL244fLD.SUre.qcgFRMkaxs4EigfEkWfkD9fFI57j2E6KqcF9y7ucM9Wt6w_qoFiBkq.t8VXZmmFgZ8aumiza9OqTHFnbBhCTzMvdmqt.dF188UtbVZaD0P2h1iRDO8sBHAYrbalBrSOwQxmCIc8f8O2_5ysFOuXVsxiUcAXk2Iu2mBMoE4TI8vnDuUVoKQDOogCxToM4eCIkWNdqop.FMkdz6jrwy3El4c5_g2.ud0He4reCFZaSQHKFh5Wnz8DvSAWoG_x2gEv.ekynBddGilHbnIXURH8J8rO3Pf0GRKrmIUoGnStZFwL42t1yfBXOJ6DhSR2WQWZ7SKY"
+
+# 🔴 YAHAN SE COOKIES DAALO
+YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4NDA5MjA4LCJleHAiOjE3ODg1ODIwMDh9.NWrNRXHK3FmsesAvkQLcPTo1FyjXOrhjKiYb76goN_U"
+YOUR_CF_CLEARANCE = "6VjQXs84K13_BaMPBTjHOTi0FQIF4M3u6ettIH8KOzI-1788409180-1.2.1.1-mbclfFUl3cDdYXX9utz1vu.yJdw3Tk7AShWZkEVd7YYGpMPtHfS3j5WIqxhmI3UC7LubbnnlvmxZz69i.hnkkRFkxDxhvvuj2pbBuoMopMiY4rWQHgmZuy9X6e9xZQvWXb1F_c6InWYZxe0r0jrLiCYfXXsCSAXwG.jd8G3FZvg4WKk7upjSgWIMr__plD_RjRnF.y2JrZrpDiedy5TC7H_z30rZ42RzDQNOMnXsHB3PZZyqVebpt_lOUU6XWFVDyoK_QPeOmBk2RCRVa9hiw57jzkMARJMcqqKlMtFPHOcvbRHX508nYXliHUT9ltyeyx0E9asKZ0NNIWvs75iPzBX.9T5HscSuTaRcWnShSpw"
 
 # ========== DATABASE ==========
 def init_db():
@@ -47,7 +49,7 @@ def init_db():
         last_task TEXT,
         last_claim TEXT,
         next_claim TEXT,
-        claimable INTEGER DEFAULT 0,
+        claimable REAL DEFAULT 0,
         active INTEGER DEFAULT 1,
         first_name TEXT,
         username TEXT
@@ -66,7 +68,7 @@ def migrate_db():
         "atf_session": "TEXT",
         "cf_clearance": "TEXT",
         "task_cooldowns": "TEXT DEFAULT '{}'",
-        "claimable": "INTEGER DEFAULT 0"
+        "claimable": "REAL DEFAULT 0"
     }
     
     for col, col_type in new_columns.items():
@@ -129,14 +131,13 @@ def call_atf(tg_data, atf_session, cf_clearance, action, extra=None):
     
     try:
         response = session.post(url, json=payload, timeout=20)
+        print(f"[API] {action} | Status: {response.status_code}")
         
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 401:
-            print(f"[API] {action} | 401 - Cookie expired")
             return {"status": "error", "code": 401}
         else:
-            print(f"[API] {action} | Status: {response.status_code}")
             return {"status": "error", "code": response.status_code}
             
     except Exception as e:
@@ -172,14 +173,16 @@ def sync_user(tg_id):
 
     try:
         data = res.get("user", {})
+        
         mined = float(data.get("mined_balance", 0))
         holding = float(data.get("wallet_holding_atf", 0))
         balance = float(data.get("assets_total", mined + holding))
+        claimable_now = float(res.get("claimable_now", 0))
         level = int(data.get("miner_level", 1))
         progress = float(data.get("level_pending_withdraw_atf", 0))
         completed = data.get("completed_tasks", [])
-        cooldowns = data.get("task_cooldowns", {})
-        claimable = 1 if data.get("claimable", False) else 0
+        cooldowns = res.get("task_cooldowns", {})
+        react_post = res.get("react_post", {})
 
         conn = db()
         c = conn.cursor()
@@ -190,11 +193,11 @@ def sync_user(tg_id):
             claimable = ?
             WHERE tg_id = ?""",
             (mined, holding, balance, level, progress,
-             json.dumps(completed), json.dumps(cooldowns), claimable, tg_id))
+             json.dumps(completed), json.dumps(cooldowns), claimable_now, tg_id))
         conn.commit()
         conn.close()
 
-        print(f"[SYNC] {tg_id} | Balance={balance} | Claimable={claimable}")
+        print(f"[SYNC] {tg_id} | Balance={balance} | Claimable={claimable_now} | Level={level}")
         return True
     except Exception as e:
         print(f"[SYNC ERROR] {tg_id}: {e}")
@@ -248,8 +251,6 @@ def do_tasks(tg_id):
         
         if res.get("status") == "success":
             server_cooldowns = res.get("task_cooldowns")
-            if not server_cooldowns:
-                server_cooldowns = res.get("user", {}).get("task_cooldowns", {})
             if server_cooldowns:
                 cooldowns.update(server_cooldowns)
         
@@ -274,6 +275,10 @@ def claim_rewards(tg_id):
 
     if not user or not user[0] or not user[1] or not user[2]:
         return False
+    
+    if user[3] == 0:
+        print(f"[CLAIM] {tg_id}: No rewards to claim (claimable=0)")
+        return False
 
     tg_data = extract_tg_data(user[0])
     if not tg_data:
@@ -287,7 +292,7 @@ def claim_rewards(tg_id):
         return False
 
     if res.get("status") != "success":
-        print(f"[CLAIM] {tg_id}: No rewards to claim")
+        print(f"[CLAIM] {tg_id}: Claim failed")
         return False
 
     new_balance = float(res.get("new_balance", 0))
@@ -832,7 +837,8 @@ async def run_bot():
     print("🚀 ATF Bot Started (WORKING!)")
     print("📊 Dashboard: http://localhost:5000")
     print("💬 Support: @xghostid")
-    print("✅ API working - claim_preview: 0.0047")
+    print(f"✅ Balance: 226.6898 ATF")
+    print(f"✅ Level: 34")
     print("=" * 40)
     await dp.start_polling(bot)
 
