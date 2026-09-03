@@ -26,9 +26,9 @@ OWNER = "@xghostid"
 YOUR_TG_ID = "8497620413"
 YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1786140012#tgWebAppData=user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26chat_instance%3D-968499519986194590%26chat_type%3Dsender%26auth_date%3D1788372127%26signature%3D9nlbLAPTBTsFgMMk55AoyrC3WOqON4MXUAfEBYLJSBufD2u3G2QCTGIvAa19aIz-A_-lmIMPNxn4Ogqqb9lQBA%26hash%3De16352f1bf1356b02788a3c45b86f7c4880a71242d9494dcdab0b962e91d41ab&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppFullscreen=1&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
 
-# 🔴 YAHAN SE COOKIES DAALO
-YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4NDA5MjA4LCJleHAiOjE3ODg1ODIwMDh9.NWrNRXHK3FmsesAvkQLcPTo1FyjXOrhjKiYb76goN_U"
-YOUR_CF_CLEARANCE = "6VjQXs84K13_BaMPBTjHOTi0FQIF4M3u6ettIH8KOzI-1788409180-1.2.1.1-mbclfFUl3cDdYXX9utz1vu.yJdw3Tk7AShWZkEVd7YYGpMPtHfS3j5WIqxhmI3UC7LubbnnlvmxZz69i.hnkkRFkxDxhvvuj2pbBuoMopMiY4rWQHgmZuy9X6e9xZQvWXb1F_c6InWYZxe0r0jrLiCYfXXsCSAXwG.jd8G3FZvg4WKk7upjSgWIMr__plD_RjRnF.y2JrZrpDiedy5TC7H_z30rZ42RzDQNOMnXsHB3PZZyqVebpt_lOUU6XWFVDyoK_QPeOmBk2RCRVa9hiw57jzkMARJMcqqKlMtFPHOcvbRHX508nYXliHUT9ltyeyx0E9asKZ0NNIWvs75iPzBX.9T5HscSuTaRcWnShSpw"
+# 🔴 INITIAL COOKIE (Auto-update ho jayegi)
+YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4NDIyNzA0LCJleHAiOjE3ODg1OTU1MDR9.DLntaurhAJf_mc5IwlOdBz3I-IfMi8yXrMhCRfUsM-g"
+YOUR_CF_CLEARANCE = "zBof0y0L7OGwNfOr1CZVCe9uP_M0AmYd55NSaxfr0Kk-1788422705-1.2.1.1-Cw7V.9TAmJHJWocPfr3LEkZ9RvsXnjYZlANI4T0zxIBwKheJO7h1cgYODmGlsk_nJqbAa3oCkhSpFeDg6a1QND84xrefptqD2zuBVT7qnsATwtFabiYGMyEzv.vlSxBVfPpWW1y3Y4ULpIb1nTRZ.MygHe.vS9nR0XmgYa4fIMlidDM1lbgd7mMzjgZizxuGp8LLhxHtTu.mM7HJ8TRai3MatQGo.iAX9nDEzBK33hyE6h_.0l.gsfZ5KZro9xbtaQVMjZEDzxYbyxDm9ycl.b_qTHgqQS5Z.8HoIiMexMggEXI0t81udvjNnLy4KRmIR9VoSG2yJbPhxDg.X4cT341rqWc5M_Fa6iyX.sFcdz8"
 
 # ========== DATABASE ==========
 def init_db():
@@ -97,7 +97,21 @@ def extract_tg_data(link):
         tg_data = params.get("tgWebAppData", [None])[0]
     return tg_data
 
-# ========== ATF API ==========
+# ========== AUTO UPDATE SESSION TOKEN FROM API ==========
+def update_session_token(tg_id, session_token):
+    """Update session token in database"""
+    if not session_token:
+        return False
+    
+    conn = db()
+    c = conn.cursor()
+    c.execute("UPDATE users SET atf_session = ? WHERE tg_id = ?", (session_token, tg_id))
+    conn.commit()
+    conn.close()
+    print(f"[SESSION] {tg_id}: ✅ Session token updated!")
+    return True
+
+# ========== ATF API WITH AUTO SESSION UPDATE ==========
 def call_atf(tg_data, atf_session, cf_clearance, action, extra=None):
     t = int(time.time() * 1000)
     url = f"{ATF_URL}?action={action}&t={t}"
@@ -131,12 +145,11 @@ def call_atf(tg_data, atf_session, cf_clearance, action, extra=None):
     
     try:
         response = session.post(url, json=payload, timeout=20)
-        print(f"[API] {action} | Status: {response.status_code}")
         
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 401:
-            return {"status": "error", "code": 401}
+            return {"status": "error", "code": 401, "need_refresh": True}
         else:
             return {"status": "error", "code": response.status_code}
             
@@ -144,7 +157,7 @@ def call_atf(tg_data, atf_session, cf_clearance, action, extra=None):
         print(f"[API] {action} | Error: {e}")
         return {"status": "error", "code": "exception"}
 
-# ========== SYNC USER ==========
+# ========== SYNC USER WITH AUTO SESSION UPDATE ==========
 def sync_user(tg_id):
     conn = db()
     c = conn.cursor()
@@ -163,8 +176,48 @@ def sync_user(tg_id):
 
     res = call_atf(tg_data, user[1], user[2], "sync_wallet")
 
+    # 🔥 AUTO UPDATE SESSION TOKEN FROM RESPONSE
+    if res.get("tma_session_token"):
+        new_token = res.get("tma_session_token")
+        if new_token != user[1]:
+            update_session_token(tg_id, new_token)
+            print(f"[SYNC] {tg_id}: 🔄 Session token auto-updated!")
+
+    # 🔥 AUTO REFRESH ON 401
+    if res.get("need_refresh"):
+        print(f"[SYNC] {tg_id}: 🔄 Refreshing cookies...")
+        conn = db()
+        c = conn.cursor()
+        c.execute("SELECT link FROM users WHERE tg_id = ?", (tg_id,))
+        link_user = c.fetchone()
+        conn.close()
+        
+        if link_user:
+            try:
+                sess = requests.Session()
+                sess.headers.update({
+                    "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                })
+                resp = sess.get(link_user[0], timeout=15)
+                if resp.status_code == 200:
+                    cookies = sess.cookies.get_dict()
+                    new_atf = cookies.get("atf_tma_session")
+                    new_cf = cookies.get("cf_clearance")
+                    if new_atf and new_cf:
+                        conn = db()
+                        c = conn.cursor()
+                        c.execute("UPDATE users SET atf_session = ?, cf_clearance = ? WHERE tg_id = ?",
+                                  (new_atf, new_cf, tg_id))
+                        conn.commit()
+                        conn.close()
+                        print(f"[SYNC] {tg_id}: ✅ Cookies refreshed!")
+                        res = call_atf(tg_data, new_atf, new_cf, "sync_wallet")
+            except Exception as e:
+                print(f"[SYNC] {tg_id}: Refresh error: {e}")
+
     if res.get("code") == 401:
-        print(f"[SYNC] {tg_id}: 401 - Update cookies")
+        print(f"[SYNC] {tg_id}: ❌ Still 401")
         return False
 
     if res.get("status") != "success":
@@ -182,7 +235,6 @@ def sync_user(tg_id):
         progress = float(data.get("level_pending_withdraw_atf", 0))
         completed = data.get("completed_tasks", [])
         cooldowns = res.get("task_cooldowns", {})
-        react_post = res.get("react_post", {})
 
         conn = db()
         c = conn.cursor()
@@ -197,7 +249,7 @@ def sync_user(tg_id):
         conn.commit()
         conn.close()
 
-        print(f"[SYNC] {tg_id} | Balance={balance} | Claimable={claimable_now} | Level={level}")
+        print(f"[SYNC] {tg_id} | Balance={balance} | Claimable={claimable_now}")
         return True
     except Exception as e:
         print(f"[SYNC ERROR] {tg_id}: {e}")
@@ -245,8 +297,12 @@ def do_tasks(tg_id):
         print(f"[TASKS] {tg_id}: Doing {task}")
         res = call_atf(tg_data, user[1], user[2], task)
         
+        if res.get("need_refresh"):
+            print(f"[TASKS] {tg_id}: 🔄 Refreshing...")
+            continue
+        
         if res.get("code") == 401:
-            print(f"[TASKS] {tg_id}: 401 - Update cookies")
+            print(f"[TASKS] {tg_id}: ❌ 401")
             return False
         
         if res.get("status") == "success":
@@ -277,7 +333,7 @@ def claim_rewards(tg_id):
         return False
     
     if user[3] == 0:
-        print(f"[CLAIM] {tg_id}: No rewards to claim (claimable=0)")
+        print(f"[CLAIM] {tg_id}: No rewards")
         return False
 
     tg_data = extract_tg_data(user[0])
@@ -287,8 +343,12 @@ def claim_rewards(tg_id):
     print(f"[CLAIM] {tg_id}: Attempting claim...")
     res = call_atf(tg_data, user[1], user[2], "claim")
 
+    if res.get("need_refresh"):
+        print(f"[CLAIM] {tg_id}: 🔄 Refreshing...")
+        return False
+
     if res.get("code") == 401:
-        print(f"[CLAIM] {tg_id}: 401 - Update cookies")
+        print(f"[CLAIM] {tg_id}: ❌ 401")
         return False
 
     if res.get("status") != "success":
@@ -834,11 +894,10 @@ def run_flask():
 async def run_bot():
     auto_add_your_account()
     print("=" * 40)
-    print("🚀 ATF Bot Started (WORKING!)")
+    print("🚀 ATF Bot Started (AUTO SESSION TOKEN)")
     print("📊 Dashboard: http://localhost:5000")
     print("💬 Support: @xghostid")
-    print(f"✅ Balance: 226.6898 ATF")
-    print(f"✅ Level: 34")
+    print("✅ Auto session token update from API")
     print("=" * 40)
     await dp.start_polling(bot)
 
