@@ -4,6 +4,7 @@ import sqlite3
 import time
 import requests
 import urllib.parse
+import uuid
 from datetime import datetime
 from threading import Thread, Lock
 from flask import Flask, request, jsonify, render_template_string
@@ -24,11 +25,14 @@ OWNER = "@xghostid"
 
 # ========== YOUR DATA ==========
 YOUR_TG_ID = "8497620413"
-YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1786140012#tgWebAppData=user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26chat_instance%3D-968499519986194590%26chat_type%3Dsender%26auth_date%3D1788372127%26signature%3D9nlbLAPTBTsFgMMk55AoyrC3WOqON4MXUAfEBYLJSBufD2u3G2QCTGIvAa19aIz-A_-lmIMPNxn4Ogqqb9lQBA%26hash%3De16352f1bf1356b02788a3c45b86f7c4880a71242d9494dcdab0b962e91d41ab&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppFullscreen=1&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
+YOUR_REF_CODE = "6254728836"
+YOUR_USERNAME = "xghostid"
+YOUR_DEVICE_ID = "dev-b12cd458-3bc0-4bb6-9240-e0e7d0970572"
 
-# 🔴 INITIAL COOKIE (Auto-update ho jayegi)
-YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4NDIyNzA0LCJleHAiOjE3ODg1OTU1MDR9.DLntaurhAJf_mc5IwlOdBz3I-IfMi8yXrMhCRfUsM-g"
-YOUR_CF_CLEARANCE = "zBof0y0L7OGwNfOr1CZVCe9uP_M0AmYd55NSaxfr0Kk-1788422705-1.2.1.1-Cw7V.9TAmJHJWocPfr3LEkZ9RvsXnjYZlANI4T0zxIBwKheJO7h1cgYODmGlsk_nJqbAa3oCkhSpFeDg6a1QND84xrefptqD2zuBVT7qnsATwtFabiYGMyEzv.vlSxBVfPpWW1y3Y4ULpIb1nTRZ.MygHe.vS9nR0XmgYa4fIMlidDM1lbgd7mMzjgZizxuGp8LLhxHtTu.mM7HJ8TRai3MatQGo.iAX9nDEzBK33hyE6h_.0l.gsfZ5KZro9xbtaQVMjZEDzxYbyxDm9ycl.b_qTHgqQS5Z.8HoIiMexMggEXI0t81udvjNnLy4KRmIR9VoSG2yJbPhxDg.X4cT341rqWc5M_Fa6iyX.sFcdz8"
+# ========== YOUR LINK AND COOKIES ==========
+YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1788126044&entry=bot_start&ref=6254728836#tgWebAppData=query_id%3DAAG9ZX96AwAAAL1lf3ogPACr%26user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26auth_date%3D1788385618%26signature%3DQmoJjWhK98nhlK85_VkCilI6h8sFeXssOl0H2DkGyDxKx0C0oQ48WyFVpl7Efq310VwDwXzzbShC2DKicUR6DQ%26hash%3D426dfafdfc5cdc35bb20da29b2626925355dfeb5674fef682cefe467881426d8&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
+YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4MzkyMDE5LCJleHAiOjE3ODg1NjQ4MTl9.0HcL_k2YfZAT3bWj92SkTRCJxtzMl3EP4t4b2zfINoU"
+YOUR_CF_CLEARANCE = "5hnY5bcu.2g24gfIgioqIqFjrwsHC1XRuNO4qmG5bP4-1788392020-1.2.1.1-lRw5bet2zMzYZ96YK4z0sFcWEfKL244fLD.SUre.qcgFRMkaxs4EigfEkWfkD9fFI57j2E6KqcF9y7ucM9Wt6w_qoFiBkq.t8VXZmmFgZ8aumiza9OqTHFnbBhCTzMvdmqt.dF188UtbVZaD0P2h1iRDO8sBHAYrbalBrSOwQxmCIc8f8O2_5ysFOuXVsxiUcAXk2Iu2mBMoE4TI8vnDuUVoKQDOogCxToM4eCIkWNdqop.FMkdz6jrwy3El4c5_g2.ud0He4reCFZaSQHKFh5Wnz8DvSAWoG_x2gEv.ekynBddGilHbnIXURH8J8rO3Pf0GRKrmIUoGnStZFwL42t1yfBXOJ6DhSR2WQWZ7SKY"
 
 # ========== DATABASE ==========
 def init_db():
@@ -52,7 +56,9 @@ def init_db():
         claimable REAL DEFAULT 0,
         active INTEGER DEFAULT 1,
         first_name TEXT,
-        username TEXT
+        username TEXT,
+        ref_code TEXT,
+        device_id TEXT
     )''')
     conn.commit()
     conn.close()
@@ -68,7 +74,9 @@ def migrate_db():
         "atf_session": "TEXT",
         "cf_clearance": "TEXT",
         "task_cooldowns": "TEXT DEFAULT '{}'",
-        "claimable": "REAL DEFAULT 0"
+        "claimable": "REAL DEFAULT 0",
+        "ref_code": "TEXT",
+        "device_id": "TEXT"
     }
     
     for col, col_type in new_columns.items():
@@ -97,25 +105,26 @@ def extract_tg_data(link):
         tg_data = params.get("tgWebAppData", [None])[0]
     return tg_data
 
-# ========== AUTO UPDATE SESSION TOKEN FROM API ==========
-def update_session_token(tg_id, session_token):
-    """Update session token in database"""
-    if not session_token:
-        return False
-    
-    conn = db()
-    c = conn.cursor()
-    c.execute("UPDATE users SET atf_session = ? WHERE tg_id = ?", (session_token, tg_id))
-    conn.commit()
-    conn.close()
-    print(f"[SESSION] {tg_id}: ✅ Session token updated!")
-    return True
+def generate_request_id():
+    """Generate unique request_id like browser"""
+    return str(uuid.uuid4())
 
-# ========== ATF API WITH AUTO SESSION UPDATE ==========
+# ========== FIXED: ATF API WITH EXACT BROWSER PAYLOAD ==========
 def call_atf(tg_data, atf_session, cf_clearance, action, extra=None):
     t = int(time.time() * 1000)
     url = f"{ATF_URL}?action={action}&t={t}"
-    payload = {"tgWebAppData": tg_data}
+    
+    # ✅ EXACT PAYLOAD LIKE BROWSER
+    payload = {
+        "tgWebAppData": tg_data,
+        "device_id": YOUR_DEVICE_ID,
+        "ref_code": YOUR_REF_CODE,
+        "tg_id": YOUR_TG_ID,
+        "username": YOUR_USERNAME,
+        "initData": tg_data,  # Browser sends initData
+        "request_id": generate_request_id()
+    }
+    
     if extra:
         payload.update(extra)
     
@@ -145,11 +154,12 @@ def call_atf(tg_data, atf_session, cf_clearance, action, extra=None):
     
     try:
         response = session.post(url, json=payload, timeout=20)
+        print(f"[API] {action} | Status: {response.status_code}")
         
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 401:
-            return {"status": "error", "code": 401, "need_refresh": True}
+            return {"status": "error", "code": 401}
         else:
             return {"status": "error", "code": response.status_code}
             
@@ -157,7 +167,7 @@ def call_atf(tg_data, atf_session, cf_clearance, action, extra=None):
         print(f"[API] {action} | Error: {e}")
         return {"status": "error", "code": "exception"}
 
-# ========== SYNC USER WITH AUTO SESSION UPDATE ==========
+# ========== SYNC USER ==========
 def sync_user(tg_id):
     conn = db()
     c = conn.cursor()
@@ -176,48 +186,8 @@ def sync_user(tg_id):
 
     res = call_atf(tg_data, user[1], user[2], "sync_wallet")
 
-    # 🔥 AUTO UPDATE SESSION TOKEN FROM RESPONSE
-    if res.get("tma_session_token"):
-        new_token = res.get("tma_session_token")
-        if new_token != user[1]:
-            update_session_token(tg_id, new_token)
-            print(f"[SYNC] {tg_id}: 🔄 Session token auto-updated!")
-
-    # 🔥 AUTO REFRESH ON 401
-    if res.get("need_refresh"):
-        print(f"[SYNC] {tg_id}: 🔄 Refreshing cookies...")
-        conn = db()
-        c = conn.cursor()
-        c.execute("SELECT link FROM users WHERE tg_id = ?", (tg_id,))
-        link_user = c.fetchone()
-        conn.close()
-        
-        if link_user:
-            try:
-                sess = requests.Session()
-                sess.headers.update({
-                    "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-                })
-                resp = sess.get(link_user[0], timeout=15)
-                if resp.status_code == 200:
-                    cookies = sess.cookies.get_dict()
-                    new_atf = cookies.get("atf_tma_session")
-                    new_cf = cookies.get("cf_clearance")
-                    if new_atf and new_cf:
-                        conn = db()
-                        c = conn.cursor()
-                        c.execute("UPDATE users SET atf_session = ?, cf_clearance = ? WHERE tg_id = ?",
-                                  (new_atf, new_cf, tg_id))
-                        conn.commit()
-                        conn.close()
-                        print(f"[SYNC] {tg_id}: ✅ Cookies refreshed!")
-                        res = call_atf(tg_data, new_atf, new_cf, "sync_wallet")
-            except Exception as e:
-                print(f"[SYNC] {tg_id}: Refresh error: {e}")
-
     if res.get("code") == 401:
-        print(f"[SYNC] {tg_id}: ❌ Still 401")
+        print(f"[SYNC] {tg_id}: ❌ 401")
         return False
 
     if res.get("status") != "success":
@@ -235,6 +205,17 @@ def sync_user(tg_id):
         progress = float(data.get("level_pending_withdraw_atf", 0))
         completed = data.get("completed_tasks", [])
         cooldowns = res.get("task_cooldowns", {})
+        
+        # Update session token if provided
+        if res.get("tma_session_token"):
+            new_token = res.get("tma_session_token")
+            if new_token != user[1]:
+                conn = db()
+                c = conn.cursor()
+                c.execute("UPDATE users SET atf_session = ? WHERE tg_id = ?", (new_token, tg_id))
+                conn.commit()
+                conn.close()
+                print(f"[SYNC] {tg_id}: ✅ Session token updated!")
 
         conn = db()
         c = conn.cursor()
@@ -249,7 +230,7 @@ def sync_user(tg_id):
         conn.commit()
         conn.close()
 
-        print(f"[SYNC] {tg_id} | Balance={balance} | Claimable={claimable_now}")
+        print(f"[SYNC] {tg_id} | Balance={balance} | Claimable={claimable_now} | Level={level}")
         return True
     except Exception as e:
         print(f"[SYNC ERROR] {tg_id}: {e}")
@@ -297,10 +278,6 @@ def do_tasks(tg_id):
         print(f"[TASKS] {tg_id}: Doing {task}")
         res = call_atf(tg_data, user[1], user[2], task)
         
-        if res.get("need_refresh"):
-            print(f"[TASKS] {tg_id}: 🔄 Refreshing...")
-            continue
-        
         if res.get("code") == 401:
             print(f"[TASKS] {tg_id}: ❌ 401")
             return False
@@ -321,70 +298,88 @@ def do_tasks(tg_id):
     
     return True
 
-# ========== CLAIM REWARDS ==========
+# ========== CLAIM REWARDS (FIXED) ==========
 def claim_rewards(tg_id):
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT link, atf_session, cf_clearance, claimable FROM users WHERE tg_id = ?", (tg_id,))
+    c.execute("""
+        SELECT link, atf_session, cf_clearance, claimable
+        FROM users WHERE tg_id = ?
+    """, (tg_id,))
     user = c.fetchone()
     conn.close()
 
-    if not user or not user[0] or not user[1] or not user[2]:
+    if not user:
+        print(f"[CLAIM] {tg_id}: User not found")
         return False
-    
-    if user[3] == 0:
-        print(f"[CLAIM] {tg_id}: No rewards")
+
+    if user[3] is None or float(user[3]) <= 0:
+        print(f"[CLAIM] {tg_id}: Nothing claimable")
         return False
 
     tg_data = extract_tg_data(user[0])
     if not tg_data:
+        print(f"[CLAIM] {tg_id}: Missing tgWebAppData")
         return False
 
-    print(f"[CLAIM] {tg_id}: Attempting claim...")
     res = call_atf(tg_data, user[1], user[2], "claim")
 
-    if res.get("need_refresh"):
-        print(f"[CLAIM] {tg_id}: 🔄 Refreshing...")
-        return False
-
-    if res.get("code") == 401:
-        print(f"[CLAIM] {tg_id}: ❌ 401")
-        return False
-
     if res.get("status") != "success":
-        print(f"[CLAIM] {tg_id}: Claim failed")
+        print(f"[CLAIM] {tg_id}: Claim failed: {res}")
         return False
 
-    new_balance = float(res.get("new_balance", 0))
-    reward = float(res.get("reward", 0))
-    next_available = res.get("next_available")
+    claimed = float(res.get("claimed_amount", 0))
+    new_balance = float(
+        res.get("new_pool_balance",
+                res.get("assets_total", 0))
+    )
+    new_level = int(res.get("new_level", 1))
 
     conn = db()
     c = conn.cursor()
-    c.execute("""UPDATE users SET 
-        balance = ?, 
-        pool = ?,
-        last_claim = CURRENT_TIMESTAMP, 
-        next_claim = ?, 
-        claimable = 0 
-        WHERE tg_id = ?""",
-              (new_balance, new_balance,
-               datetime.fromtimestamp(int(next_available)).strftime("%Y-%m-%d %H:%M:%S") if next_available else None,
-               tg_id))
+
+    c.execute("""
+        UPDATE users SET
+            balance = ?,
+            pool = ?,
+            level = ?,
+            last_claim = CURRENT_TIMESTAMP,
+            claimable = 0
+        WHERE tg_id = ?
+    """, (new_balance, new_balance, new_level, tg_id))
+
     conn.commit()
     conn.close()
 
-    print(f"[CLAIM] {tg_id}: +{reward} ATF | New Balance={new_balance}")
+    print(
+        f"[CLAIM] {tg_id}: "
+        f"+{claimed:.4f} ATF | "
+        f"Balance={new_balance:.4f} | "
+        f"Level={new_level}"
+    )
+
     return True
 
-# ========== MINE ==========
+# ========== MINE NOW (FIXED) ==========
 def mine_now(tg_id):
     print(f"[MINE] {tg_id}: Starting...")
-    sync_user(tg_id)
+
+    if not sync_user(tg_id):
+        print(f"[MINE] {tg_id}: Sync failed")
+        return False
+
     do_tasks(tg_id)
+
+    if not sync_user(tg_id):
+        print(f"[MINE] {tg_id}: Second sync failed")
+        return False
+
+    if not claim_rewards(tg_id):
+        print(f"[MINE] {tg_id}: Claim failed/not available")
+        return False
+
     sync_user(tg_id)
-    claim_rewards(tg_id)
-    sync_user(tg_id)
+
     print(f"[MINE] {tg_id}: Completed!")
     return True
 
@@ -564,11 +559,15 @@ def add_user():
     exists = c.fetchone()
     
     if exists:
-        c.execute("UPDATE users SET link = ?, atf_session = ?, cf_clearance = ?, first_name = ? WHERE tg_id = ?",
+        c.execute("""UPDATE users SET 
+            link = ?, atf_session = ?, cf_clearance = ?, first_name = ? 
+            WHERE tg_id = ?""",
                   (link, atf_session, cf_clearance, name, tg_id))
     else:
-        c.execute("INSERT INTO users (tg_id, link, atf_session, cf_clearance, first_name) VALUES (?, ?, ?, ?, ?)",
-                  (tg_id, link, atf_session, cf_clearance, name))
+        c.execute("""INSERT INTO users 
+            (tg_id, link, atf_session, cf_clearance, first_name, ref_code, device_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                  (tg_id, link, atf_session, cf_clearance, name, YOUR_REF_CODE, YOUR_DEVICE_ID))
     
     conn.commit()
     conn.close()
@@ -601,7 +600,9 @@ def refresh_user(tg_id):
 def debug_user(tg_id):
     conn = db()
     c = conn.cursor()
-    c.execute("SELECT tg_id, link IS NOT NULL, atf_session IS NOT NULL, cf_clearance IS NOT NULL, balance, level, next_claim FROM users WHERE tg_id = ?", (tg_id,))
+    c.execute("""SELECT tg_id, link IS NOT NULL, atf_session IS NOT NULL, 
+                cf_clearance IS NOT NULL, balance, level, next_claim 
+                FROM users WHERE tg_id = ?""", (tg_id,))
     user = c.fetchone()
     conn.close()
     if not user:
@@ -627,12 +628,17 @@ def auto_add_your_account():
     exists = c.fetchone()
     
     if not exists:
-        c.execute("INSERT INTO users (tg_id, link, atf_session, cf_clearance, first_name, username) VALUES (?, ?, ?, ?, ?, ?)",
-                  (YOUR_TG_ID, YOUR_LINK, YOUR_ATF_SESSION, YOUR_CF_CLEARANCE, "Hashu", "xghostid"))
+        c.execute("""INSERT INTO users 
+            (tg_id, link, atf_session, cf_clearance, first_name, username, ref_code, device_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                  (YOUR_TG_ID, YOUR_LINK, YOUR_ATF_SESSION, YOUR_CF_CLEARANCE, 
+                   "Hashu", "xghostid", YOUR_REF_CODE, YOUR_DEVICE_ID))
         conn.commit()
         print(f"✅ Auto-added your account: {YOUR_TG_ID}")
     else:
-        c.execute("UPDATE users SET link = ?, atf_session = ?, cf_clearance = ? WHERE tg_id = ?",
+        c.execute("""UPDATE users SET 
+            link = ?, atf_session = ?, cf_clearance = ? 
+            WHERE tg_id = ?""",
                   (YOUR_LINK, YOUR_ATF_SESSION, YOUR_CF_CLEARANCE, YOUR_TG_ID))
         conn.commit()
         print(f"✅ Updated your account: {YOUR_TG_ID}")
@@ -766,7 +772,7 @@ async def mine(call: types.CallbackQuery):
     tg_id = str(call.from_user.id)
     await call.answer("⛏️ Mining started! Please wait...", show_alert=True)
     
-    mine_now(tg_id)
+    success = mine_now(tg_id)
     
     conn = db()
     c = conn.cursor()
@@ -774,17 +780,24 @@ async def mine(call: types.CallbackQuery):
     user = c.fetchone()
     conn.close()
     
-    if user:
+    if success and user:
         await call.message.answer(
-            f"✅ <b>Mining Completed!</b>\n\n"
+            f"✅ <b>Mining & Claim Completed!</b>\n\n"
             f"💰 New Balance: <code>{user[0]:.4f}</code> ATF",
             reply_markup=get_menu(),
             parse_mode=ParseMode.HTML
         )
+    elif success:
+        await call.message.answer(
+            "✅ <b>Mining & Claim Completed!</b>",
+            reply_markup=get_menu()
+        )
     else:
         await call.message.answer(
-            "✅ <b>Mining Completed!</b>",
-            reply_markup=get_menu()
+            "⚠️ <b>Mining/Claim could not be completed.</b>\n\n"
+            "Check the server logs for details.",
+            reply_markup=get_menu(),
+            parse_mode=ParseMode.HTML
         )
 
 @dp.callback_query(F.data == "back")
@@ -802,8 +815,10 @@ async def handle_text(msg: types.Message):
     if "atfminers.asloni.online" in text and "tgWebAppData" in text:
         conn = db()
         c = conn.cursor()
-        c.execute("INSERT OR REPLACE INTO users (tg_id, link, first_name, username) VALUES (?, ?, ?, ?)",
-                  (tg_id, text, name, username))
+        c.execute("""INSERT OR REPLACE INTO users 
+            (tg_id, link, first_name, username, ref_code, device_id) 
+            VALUES (?, ?, ?, ?, ?, ?)""",
+                  (tg_id, text, name, username, YOUR_REF_CODE, YOUR_DEVICE_ID))
         conn.commit()
         conn.close()
         await msg.answer(
@@ -894,10 +909,10 @@ def run_flask():
 async def run_bot():
     auto_add_your_account()
     print("=" * 40)
-    print("🚀 ATF Bot Started (AUTO SESSION TOKEN)")
+    print("🚀 ATF Bot Started (EXACT BROWSER PAYLOAD)")
     print("📊 Dashboard: http://localhost:5000")
     print("💬 Support: @xghostid")
-    print("✅ Auto session token update from API")
+    print("✅ Exact browser payload: device_id, ref_code, initData, request_id")
     print("=" * 40)
     await dp.start_polling(bot)
 
