@@ -330,7 +330,7 @@ def format_channel_list():
         msg += f"{idx}. {emoji} <b>{name}</b>\n"
         msg += f"   📌 ID: <code>{chat_id}</code>\n"
     return msg
-    # ============================================
+# ============================================
 # PART 3 - CHANNEL MONITORING, COMMANDS & MAIN
 # ============================================
 
@@ -410,7 +410,7 @@ async def monitor_channels():
     
     await user_client.run_until_disconnected()
 
-async def get_channel_last_messages(chat_id, limit=2):
+async def get_channel_last_messages(chat_id, limit=1):  # 🔥 CHANGED: limit=1
     try:
         messages = []
         async for msg in user_client.iter_messages(chat_id, limit=limit):
@@ -432,7 +432,7 @@ async def get_channel_last_messages(chat_id, limit=2):
         logger.error(f"Error getting messages from {chat_id}: {e}")
         return []
 
-async def get_all_channels_last_messages(limit=2):
+async def get_all_channels_last_messages(limit=1):  # 🔥 CHANGED: limit=1
     result = {}
     for chat_id in MONITORED_CHANNELS:
         messages = await get_channel_last_messages(chat_id, limit)
@@ -455,8 +455,7 @@ async def start_command(message: types.Message):
 
 <b>📋 Commands:</b>
 /channels - <b>List monitored channels</b>
-/last - <b>Get last 2 messages from all channels</b>
-/lastcombined - <b>Get combined messages from all channels</b>
+/last - <b>Get last message from all channels (COMBINED)</b>
 /addchannel - <b>Add channel to monitor</b>
 /removechannel - <b>Remove channel from monitoring</b>
 
@@ -472,81 +471,34 @@ async def channels_command(message: types.Message):
         return
     await message.reply(format_channel_list(), parse_mode=ParseMode.HTML)
 
-@dp.message(Command("lastcombined"))
-async def lastcombined_command(message: types.Message):
-    if message.chat.id != GROUP_CHAT_ID and message.from_user.id not in [8497620413]:
-        await message.reply("❌ This command is only available in the main group.")
-        return
-    
-    status_msg = await message.reply("🔄 <b>Fetching messages...</b>", parse_mode=ParseMode.HTML)
-    
-    all_messages = {}
-    for chat_id in MONITORED_CHANNELS:
-        messages = await get_channel_last_messages(chat_id, limit=2)
-        if messages:
-            for msg in messages:
-                key = f"{chat_id}_{msg['message_id']}"
-                all_messages[key] = {
-                    'chat_id': str(chat_id),
-                    'message': msg['message'],
-                    'type': msg['type'],
-                    'date': msg['date'],
-                    'message_id': msg['message_id']
-                }
-    
-    if not all_messages:
-        await status_msg.edit_text("📭 <b>No messages found in any channel.</b>", parse_mode=ParseMode.HTML)
-        return
-    
-    channels_data = {}
-    for key, msg_data in all_messages.items():
-        chat_id = int(msg_data['chat_id'])
-        channels_data[str(chat_id)] = {
-            'message': msg_data['message'],
-            'type': msg_data['type'],
-            'date': msg_data['date']
-        }
-    
-    combined_msg = format_combined_message(channels_data)
-    await status_msg.edit_text(combined_msg, parse_mode=ParseMode.HTML)
-
 @dp.message(Command("last"))
 async def last_command(message: types.Message):
+    """Get last 1 message from all channels in COMBINED format"""
     if message.chat.id != GROUP_CHAT_ID and message.from_user.id not in [8497620413]:
         await message.reply("❌ This command is only available in the main group.")
         return
     
     status_msg = await message.reply("🔄 <b>Fetching messages...</b>", parse_mode=ParseMode.HTML)
     
-    messages_data = await get_all_channels_last_messages(limit=2)
+    # 🔥 Get last 1 message from each channel
+    channels_data = {}
+    for chat_id in MONITORED_CHANNELS:
+        messages = await get_channel_last_messages(chat_id, limit=1)
+        if messages:
+            msg = messages[0]
+            channels_data[str(chat_id)] = {
+                'message': msg['message'],
+                'type': msg['type'],
+                'date': msg['date']
+            }
     
-    if not messages_data:
+    if not channels_data:
         await status_msg.edit_text("📭 <b>No messages found in any channel.</b>", parse_mode=ParseMode.HTML)
         return
     
-    for chat_id, messages in messages_data.items():
-        channel_id = int(chat_id)
-        emoji = get_channel_emoji(channel_id)
-        channel_name = get_channel_name(channel_id)
-        
-        for msg in messages:
-            msg_type = msg.get('type', 'text')
-            media_emoji = get_media_emoji(msg_type)
-            timestamp = msg.get('date', datetime.now().strftime('%d %b %Y • %I:%M %p'))
-            message_text = msg.get('message', 'No message')
-            
-            formatted_msg = f"""<blockquote expandable>
-<b>{emoji} {channel_name}</b>
-{media_emoji} {msg_type.upper()}
-🕒 {timestamp}
-━━━━━━━━━━━━━━━━━━━━
-{message_text}
-</blockquote>"""
-            
-            await message.reply(formatted_msg, parse_mode=ParseMode.HTML)
-            await asyncio.sleep(0.5)
-    
-    await status_msg.delete()
+    # 🔥 Send as COMBINED message
+    combined_msg = format_combined_message(channels_data)
+    await status_msg.edit_text(combined_msg, parse_mode=ParseMode.HTML)
 
 @dp.message(Command("addchannel"))
 async def add_channel_command(message: types.Message):
