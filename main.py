@@ -11,7 +11,8 @@ from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
-from aiogram.types import FSInputFile, InputMediaPhoto
+from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.tl.types import MessageEntityCustomEmoji, MessageEntityTextUrl
@@ -60,6 +61,9 @@ last_message_ids = {}
 channel_names = {}
 channel_emojis = {}
 user_client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
+
+# Store user navigation state
+user_nav_state = {}
 # ============================================
 # PART 2 - FILE HANDLING & HELPER FUNCTIONS
 # ============================================
@@ -358,48 +362,8 @@ def format_channel_message(chat_id, message_text, message_id, message_type="text
     else:
         msg_content = f"\n━━━━━━━━━━━━━━━━━━━━\n<em>📷 {message_type.upper()} message</em>"
     
-    formatted_msg = f"""<blockquote expandable>
-{main_content}{msg_content}
-</blockquote>"""
+    formatted_msg = f"""{main_content}{msg_content}"""
     return formatted_msg
-
-
-def format_combined_message(channels_data):
-    if not channels_data:
-        return "<b>📭 No messages found</b>"
-    
-    timestamp = datetime.now().strftime("%d %b %Y • %I:%M %p")
-    
-    msg = f"""<blockquote>
-<b>🌅 ALL CHANNELS - LATEST UPDATES</b>
-🕒 {timestamp}
-</blockquote>
-"""
-    
-    for chat_id, data in channels_data.items():
-        channel_name = get_channel_name(int(chat_id))
-        emoji = get_channel_emoji(int(chat_id))
-        msg_type = data.get('type', 'text')
-        media_emoji = get_media_emoji(msg_type)
-        message_text = data.get('message', 'No message')
-        
-        if msg_type != 'text' and not message_text:
-            message_text = f"📷 {msg_type.upper()} message"
-        
-        # Remove ** and make bold properly
-        if message_text:
-            message_text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', message_text)
-            message_text = re.sub(r'\*(.+?)\*', r'\1', message_text)
-        
-        msg += f"""<blockquote expandable>
-{emoji} <b>{channel_name}</b>
-{media_emoji} {msg_type.upper()}
-🕒 {data.get('date', timestamp)}
-━━━━━━━━━━━━━━━━━━━━
-{message_text}
-</blockquote>
-"""
-    return msg
 
 
 def format_channel_list():
@@ -420,15 +384,12 @@ def extract_entities(text, entities):
     if not entities:
         return text
     
-    # Process entities in reverse order to maintain positions
     for entity in sorted(entities, key=lambda e: e.offset, reverse=True):
         entity_text = text[entity.offset:entity.offset + entity.length]
         
         if isinstance(entity, MessageEntityCustomEmoji):
-            # Custom emoji - keep as is
             pass
         elif isinstance(entity, MessageEntityTextUrl):
-            # Text URL
             url = entity.url
             replacement = f'<a href="{url}">{entity_text}</a>'
             text = text[:entity.offset] + replacement + text[entity.offset + entity.length:]
@@ -504,7 +465,7 @@ async def process_message(message):
             else:
                 await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
         
-        # PHOTO - FIXED WITH PROPER CAPTION
+        # PHOTO
         elif message.photo:
             try:
                 file_path, file_name = await download_media(message)
@@ -567,7 +528,8 @@ async def get_channel_last_messages(chat_id, limit=1):
                 'message': msg_text,
                 'type': msg_type,
                 'date': msg.date.strftime('%d %b %Y • %I:%M %p'),
-                'message_obj': msg  # Store full message object for media
+                'message_obj': msg,
+                'chat_id': str(chat_id)
             })
         return messages
     except Exception as e:
@@ -575,64 +537,340 @@ async def get_channel_last_messages(chat_id, limit=1):
         return []
 
 
-async def send_media_message(chat_id, msg_data, formatted_msg):
-    """Send media message with proper caption"""
-    msg = msg_data['message_obj']
-    msg_type = msg_data['type']
-    
-    # VOICE
-    if msg.voice:
-        file_path, file_name = await download_media(msg)
-        if file_path and os.path.exists(file_path):
-            await bot.send_voice(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
-            os.remove(file_path)
-            return True
-    
-    # VIDEO
+async def get_media_file(msg):
+    """Download media and return file path"""
+    if msg.photo:
+        return await download_media(msg)
     elif msg.video:
-        file_path, file_name = await download_media(msg)
-        if file_path and os.path.exists(file_path):
-            await bot.send_video(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
-            os.remove(file_path)
-            return True
-    
-    # STICKER
-    elif msg.sticker:
-        file_path, file_name = await download_media(msg)
-        if file_path and os.path.exists(file_path):
-            await bot.send_sticker(chat_id, FSInputFile(file_path))
-            await bot.send_message(chat_id, formatted_msg, parse_mode=ParseMode.HTML)
-            os.remove(file_path)
-            return True
-    
-    # AUDIO
+        return await download_media(msg)
+    elif msg.voice:
+        return await download_media(msg)
     elif msg.audio:
-        file_path, file_name = await download_media(msg)
-        if file_path and os.path.exists(file_path):
-            await bot.send_audio(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
-            os.remove(file_path)
-            return True
-    
-    # DOCUMENT / GIF
+        return await download_media(msg)
     elif msg.document:
-        file_path, file_name = await download_media(msg)
-        if file_path and os.path.exists(file_path):
-            if msg_type == "gif":
-                await bot.send_animation(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
+        return await download_media(msg)
+    elif msg.sticker:
+        return await download_media(msg)
+    return None, None
+
+
+async def send_or_edit_media(chat_id, msg_id, channel_index, channel_data, total_channels, is_edit=False):
+    """Send new message or edit existing with media"""
+    
+    msg_obj = channel_data.get('message_obj')
+    msg_type = channel_data.get('type', 'text')
+    msg_text = channel_data.get('message', 'No message')
+    chat_id_int = int(channel_data.get('chat_id', 0))
+    message_id = channel_data.get('message_id', 0)
+    
+    # Format message
+    formatted_msg = format_channel_message(chat_id_int, msg_text, message_id, msg_type)
+    
+    # Create navigation buttons (only Next)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text=f"⏩ Next ({channel_index+1}/{total_channels})", 
+                callback_data=f"nav_{channel_index+1}"
+            )
+        ]
+    ])
+    
+    # If no media or text message
+    if not msg_obj or msg_type == 'text':
+        if is_edit and msg_id:
+            try:
+                await bot.edit_text(
+                    chat_id=chat_id,
+                    message_id=msg_id,
+                    text=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+                return True
+            except:
+                sent = await bot.send_message(
+                    chat_id,
+                    formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+                if chat_id in user_nav_state:
+                    user_nav_state[chat_id]['msg_id'] = sent.message_id
+                return True
+        else:
+            sent = await bot.send_message(
+                chat_id,
+                formatted_msg,
+                parse_mode=ParseMode.HTML,
+                reply_markup=keyboard
+            )
+            if chat_id in user_nav_state:
+                user_nav_state[chat_id]['msg_id'] = sent.message_id
+            return True
+    
+    # Download media
+    file_path, file_name = await get_media_file(msg_obj)
+    
+    if not file_path or not os.path.exists(file_path):
+        # Fallback to text
+        if is_edit and msg_id:
+            try:
+                await bot.edit_text(
+                    chat_id=chat_id,
+                    message_id=msg_id,
+                    text=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+                return True
+            except:
+                pass
+        sent = await bot.send_message(
+            chat_id,
+            formatted_msg,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard
+        )
+        if chat_id in user_nav_state:
+            user_nav_state[chat_id]['msg_id'] = sent.message_id
+        return True
+    
+    # Send/Edit based on media type
+    try:
+        if msg_type == 'photo':
+            if is_edit and msg_id:
+                try:
+                    await bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
+                sent = await bot.send_photo(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
             else:
-                await bot.send_document(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
-            os.remove(file_path)
-            return True
+                sent = await bot.send_photo(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+        
+        elif msg_type == 'video':
+            if is_edit and msg_id:
+                try:
+                    await bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
+                sent = await bot.send_video(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+            else:
+                sent = await bot.send_video(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+        
+        elif msg_type == 'voice':
+            if is_edit and msg_id:
+                try:
+                    await bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
+                sent = await bot.send_voice(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+            else:
+                sent = await bot.send_voice(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+        
+        elif msg_type == 'audio':
+            if is_edit and msg_id:
+                try:
+                    await bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
+                sent = await bot.send_audio(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+            else:
+                sent = await bot.send_audio(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+        
+        elif msg_type == 'gif':
+            if is_edit and msg_id:
+                try:
+                    await bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
+                sent = await bot.send_animation(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+            else:
+                sent = await bot.send_animation(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+        
+        elif msg_type == 'sticker':
+            if is_edit and msg_id:
+                try:
+                    await bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
+                await bot.send_sticker(chat_id, FSInputFile(file_path))
+                sent = await bot.send_message(
+                    chat_id,
+                    formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+            else:
+                await bot.send_sticker(chat_id, FSInputFile(file_path))
+                sent = await bot.send_message(
+                    chat_id,
+                    formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+        
+        else:
+            # Document
+            if is_edit and msg_id:
+                try:
+                    await bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
+                sent = await bot.send_document(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+            else:
+                sent = await bot.send_document(
+                    chat_id,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+        
+        # Clean up
+        os.remove(file_path)
+        
+        # Update message ID in state
+        if chat_id in user_nav_state:
+            user_nav_state[chat_id]['msg_id'] = sent.message_id
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error sending media: {e}")
+        # Fallback to text
+        if is_edit and msg_id:
+            try:
+                await bot.edit_text(
+                    chat_id=chat_id,
+                    message_id=msg_id,
+                    text=formatted_msg,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=keyboard
+                )
+                return True
+            except:
+                pass
+        sent = await bot.send_message(
+            chat_id,
+            formatted_msg,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard
+        )
+        if chat_id in user_nav_state:
+            user_nav_state[chat_id]['msg_id'] = sent.message_id
+        return True
+
+
+# ============ CALLBACK HANDLER ============
+
+@dp.callback_query(lambda c: c.data and c.data.startswith('nav_'))
+async def navigation_callback(callback: CallbackQuery):
+    """Handle Next button click"""
     
-    # PHOTO
-    elif msg.photo:
-        file_path, file_name = await download_media(msg)
-        if file_path and os.path.exists(file_path):
-            await bot.send_photo(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
-            os.remove(file_path)
-            return True
+    user_id = callback.from_user.id
+    data = callback.data
     
-    return False
+    try:
+        new_index = int(data.split('_')[1])
+    except:
+        await callback.answer("❌ Error")
+        return
+    
+    # Get user's channel list
+    if user_id not in user_nav_state:
+        await callback.answer("⚠️ Session expired! Use /last again.")
+        return
+    
+    channel_list = user_nav_state[user_id]['channels']
+    total_channels = len(channel_list)
+    current_msg_id = user_nav_state[user_id].get('msg_id')
+    
+    # Validate index
+    if new_index >= total_channels:
+        await callback.answer("🔚 This is the last channel!")
+        return
+    
+    # Get channel data
+    channel_data = channel_list[new_index]
+    
+    # Send/Edit message with new channel data
+    await callback.answer(f"📡 {get_channel_name(int(channel_data['chat_id']))}")
+    
+    await send_or_edit_media(
+        user_id,
+        current_msg_id,
+        new_index,
+        channel_data,
+        total_channels,
+        is_edit=True
+    )
 
 
 # ============ COMMAND HANDLERS ============
@@ -676,64 +914,59 @@ async def channels_command(message: types.Message):
 
 @dp.message(Command("last"))
 async def last_command(message: types.Message):
-    """✅ EVERYONE can use this - Get last message from ALL channels with media"""
+    """✅ EVERYONE - Get combined message with Next button"""
+    
+    user_id = message.from_user.id
     
     status_msg = await message.reply("🔄 <b>Fetching messages...</b>", parse_mode=ParseMode.HTML)
     
-    # Get all channels data
-    channels_data = {}
-    channel_messages = {}
+    # Build channel list with messages
+    channel_list = []
     
     for chat_id in MONITORED_CHANNELS:
         messages = await get_channel_last_messages(chat_id, limit=1)
         if messages:
             msg = messages[0]
-            channels_data[str(chat_id)] = {
+            channel_list.append({
+                'chat_id': str(chat_id),
                 'message': msg['message'],
                 'type': msg['type'],
-                'date': msg['date']
-            }
-            channel_messages[str(chat_id)] = msg
+                'date': msg['date'],
+                'message_obj': msg['message_obj'],
+                'message_id': msg['message_id']
+            })
         else:
-            channels_data[str(chat_id)] = {
+            channel_list.append({
+                'chat_id': str(chat_id),
                 'message': '📭 No messages yet',
                 'type': 'text',
-                'date': datetime.now().strftime('%d %b %Y • %I:%M %p')
-            }
+                'date': datetime.now().strftime('%d %b %Y • %I:%M %p'),
+                'message_obj': None,
+                'message_id': 0
+            })
     
-    if not channels_data:
+    if not channel_list:
         await status_msg.edit_text("📭 <b>No channels found.</b>", parse_mode=ParseMode.HTML)
         return
     
-    # Send combined text first
-    combined_msg = format_combined_message(channels_data)
-    await status_msg.edit_text(combined_msg, parse_mode=ParseMode.HTML)
+    # Store navigation state for user
+    user_nav_state[user_id] = {
+        'channels': channel_list,
+        'msg_id': None
+    }
     
-    # Then send each channel's media (if any)
-    for chat_id_str, msg_data in channel_messages.items():
-        chat_id = int(chat_id_str)
-        msg_type = msg_data['type']
-        
-        # Skip text messages (already in combined text)
-        if msg_type == 'text':
-            continue
-        
-        # Format message for media
-        msg_text = msg_data['message']
-        formatted_msg = format_channel_message(
-            chat_id, 
-            msg_text, 
-            msg_data['message_id'], 
-            msg_type
-        )
-        
-        # Send media with caption
-        try:
-            # Small delay to avoid rate limiting
-            await asyncio.sleep(0.5)
-            await send_media_message(message.chat.id, msg_data, formatted_msg)
-        except Exception as e:
-            logger.error(f"Error sending media for channel {chat_id}: {e}")
+    # Delete status message
+    await status_msg.delete()
+    
+    # Start with first channel (index 0)
+    await send_or_edit_media(
+        user_id,
+        None,
+        0,
+        channel_list[0],
+        len(channel_list),
+        is_edit=False
+    )
 
 
 @dp.message(Command("addchannel"))
@@ -748,7 +981,7 @@ async def add_channel_command(message: types.Message):
         await message.reply(
             "❌ <b>Usage:</b> <code>/addchannel CHANNEL_ID</code>\n\n"
             "<b>Example:</b> <code>/addchannel -1001234567890</code>\n\n"
-            "📌 Make sure your user account is in the channel.",
+        "📌 Make sure your user account is in the channel.",
             parse_mode=ParseMode.HTML
         )
         return
@@ -886,4 +1119,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n👋 Bot stopped")
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Error: {e}")      
