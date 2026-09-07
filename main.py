@@ -519,19 +519,18 @@ async def get_channel_last_messages(chat_id, limit=1):
 
 @dp.message(Command("start"))
 async def start_command(message: types.Message):
-    @dp.message(Command("start"))
-async def start_command(message: types.Message):
     await message.reply(
         f"""<blockquote>
 <b>🤖 Channel Monitor Bot</b>
 
-✅ <b>Bot is active</b>
-🔄 Auto-posts new messages from channels
+✅ <b>Bot is online</b>
+📡 Monitoring <b>{len(MONITORED_CHANNELS)}</b> channels
+🎙️ Voice messages supported
+📸 Media messages supported
 
-<b>📋 Available Command:</b>
-/last - <b>Get latest message from all channels (COMBINED)</b>
-
-<i>New messages from monitored channels are automatically posted here.</i>
+<b>📋 Commands:</b>
+/start- <b>List monitored channels</b>
+/last - <b>Get last message from all.</i>
 </blockquote>""",
         parse_mode=ParseMode.HTML
     )
