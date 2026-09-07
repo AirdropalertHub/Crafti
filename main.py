@@ -196,60 +196,127 @@ def get_channel_name(chat_id):
         return channel_names[chat_id_str]
     return f"Channel {abs(chat_id)}"
 
-# ============ MEDIA DOWNLOAD & FORMATTING ============
+# ============ MEDIA DOWNLOAD & FORMATTING (FIXED) ============
+
 async def download_media(message):
     try:
-        os.makedirs('media_cache', exist_ok=True)
-        
+        os.makedirs("media_cache", exist_ok=True)
+
         file_path = None
         file_name = None
-        
+
         if message.photo:
-            photo = message.photo[-1]
             file_name = f"media_cache/photo_{message.id}_{datetime.now().timestamp()}.jpg"
-            file_path = await user_client.download_media(photo, file=file_name)
-        elif message.document:
-            file_name = f"media_cache/doc_{message.id}_{datetime.now().timestamp()}_{message.document.file_name or 'document'}"
-            file_path = await user_client.download_media(message.document, file=file_name)
-        elif message.voice:
-            file_name = f"media_cache/voice_{message.id}_{datetime.now().timestamp()}.ogg"
-            file_path = await user_client.download_media(message.voice, file=file_name)
+            file_path = await user_client.download_media(
+                message.photo,
+                file=file_name
+            )
+
         elif message.video:
             file_name = f"media_cache/video_{message.id}_{datetime.now().timestamp()}.mp4"
-            file_path = await user_client.download_media(message.video, file=file_name)
+            file_path = await user_client.download_media(
+                message.video,
+                file=file_name
+            )
+
+        elif message.voice:
+            file_name = f"media_cache/voice_{message.id}_{datetime.now().timestamp()}.ogg"
+            file_path = await user_client.download_media(
+                message.voice,
+                file=file_name
+            )
+
         elif message.audio:
             file_name = f"media_cache/audio_{message.id}_{datetime.now().timestamp()}.mp3"
-            file_path = await user_client.download_media(message.audio, file=file_name)
+            file_path = await user_client.download_media(
+                message.audio,
+                file=file_name
+            )
+
         elif message.sticker:
             file_name = f"media_cache/sticker_{message.id}_{datetime.now().timestamp()}.webp"
-            file_path = await user_client.download_media(message.sticker, file=file_name)
-        elif message.animation:
-            file_name = f"media_cache/gif_{message.id}_{datetime.now().timestamp()}.mp4"
-            file_path = await user_client.download_media(message.animation, file=file_name)
+            file_path = await user_client.download_media(
+                message.sticker,
+                file=file_name
+            )
+
+        elif message.document:
+            document_name = getattr(message.document, "file_name", None)
+
+            if not document_name:
+                document_name = f"document_{message.id}"
+
+            file_name = (
+                f"media_cache/doc_{message.id}_"
+                f"{datetime.now().timestamp()}_{document_name}"
+            )
+
+            file_path = await user_client.download_media(
+                message.document,
+                file=file_name
+            )
+
         return file_path, file_name
+
     except Exception as e:
-        logger.error(f"Error downloading media: {e}")
+        logger.error(
+            f"Error downloading media from message "
+            f"{getattr(message, 'id', 'unknown')}: {e}"
+        )
         return None, None
+
 
 def get_message_type(message):
     if message.voice:
         return "voice"
+
     elif message.photo:
         return "photo"
+
     elif message.video:
         return "video"
-    elif message.document:
-        return "document"
+
     elif message.sticker:
         return "sticker"
-    elif message.animation:
-        return "gif"
+
     elif message.audio:
         return "audio"
+
+    elif message.document:
+        # GIF / animation is normally represented as a document
+        # in Telethon, so don't use message.animation.
+        try:
+            mime_type = getattr(message.document, "mime_type", "") or ""
+
+            attributes = getattr(
+                message.document,
+                "attributes",
+                []
+            ) or []
+
+            for attr in attributes:
+                attr_name = attr.__class__.__name__
+
+                if attr_name == "DocumentAttributeAnimated":
+                    return "gif"
+
+            if mime_type == "image/gif":
+                return "gif"
+
+            if mime_type.startswith("video/"):
+                return "video"
+
+        except Exception:
+            pass
+
+        return "document"
+
     elif message.text:
         return "text"
+
     else:
         return "unknown"
+
 
 def get_media_emoji(message_type):
     emojis = {
@@ -330,7 +397,7 @@ def format_channel_list():
         msg += f"{idx}. {emoji} <b>{name}</b>\n"
         msg += f"   📌 ID: <code>{chat_id}</code>\n"
     return msg
-# ============================================
+    # ============================================
 # PART 3 - CHANNEL MONITORING, COMMANDS & MAIN
 # ============================================
 
@@ -358,6 +425,7 @@ async def process_message(message):
                 os.remove(file_path)
             else:
                 await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
         elif message.photo:
             file_path, file_name = await download_media(message)
             if file_path and os.path.exists(file_path):
@@ -365,6 +433,7 @@ async def process_message(message):
                 os.remove(file_path)
             else:
                 await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
         elif message.video:
             file_path, file_name = await download_media(message)
             if file_path and os.path.exists(file_path):
@@ -372,13 +441,19 @@ async def process_message(message):
                 os.remove(file_path)
             else:
                 await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
         elif message.document:
             file_path, file_name = await download_media(message)
             if file_path and os.path.exists(file_path):
-                await bot.send_document(GROUP_CHAT_ID, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
+                # Check if it's a GIF
+                if msg_type == "gif":
+                    await bot.send_animation(GROUP_CHAT_ID, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
+                else:
+                    await bot.send_document(GROUP_CHAT_ID, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
                 os.remove(file_path)
             else:
                 await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
         elif message.sticker:
             file_path, file_name = await download_media(message)
             if file_path and os.path.exists(file_path):
@@ -387,13 +462,7 @@ async def process_message(message):
                 os.remove(file_path)
             else:
                 await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
-        elif message.animation:
-            file_path, file_name = await download_media(message)
-            if file_path and os.path.exists(file_path):
-                await bot.send_animation(GROUP_CHAT_ID, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
-                os.remove(file_path)
-            else:
-                await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
         else:
             await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
         
@@ -410,7 +479,7 @@ async def monitor_channels():
     
     await user_client.run_until_disconnected()
 
-async def get_channel_last_messages(chat_id, limit=1):  # 🔥 CHANGED: limit=1
+async def get_channel_last_messages(chat_id, limit=1):
     try:
         messages = []
         async for msg in user_client.iter_messages(chat_id, limit=limit):
@@ -431,14 +500,6 @@ async def get_channel_last_messages(chat_id, limit=1):  # 🔥 CHANGED: limit=1
     except Exception as e:
         logger.error(f"Error getting messages from {chat_id}: {e}")
         return []
-
-async def get_all_channels_last_messages(limit=1):  # 🔥 CHANGED: limit=1
-    result = {}
-    for chat_id in MONITORED_CHANNELS:
-        messages = await get_channel_last_messages(chat_id, limit)
-        if messages:
-            result[str(chat_id)] = messages
-    return result
 
 # ============ COMMAND HANDLERS ============
 
@@ -480,7 +541,7 @@ async def last_command(message: types.Message):
     
     status_msg = await message.reply("🔄 <b>Fetching messages...</b>", parse_mode=ParseMode.HTML)
     
-    # 🔥 Get last 1 message from each channel
+    # Get last 1 message from each channel
     channels_data = {}
     for chat_id in MONITORED_CHANNELS:
         messages = await get_channel_last_messages(chat_id, limit=1)
@@ -491,12 +552,18 @@ async def last_command(message: types.Message):
                 'type': msg['type'],
                 'date': msg['date']
             }
+        else:
+            # Show channel even if no message
+            channels_data[str(chat_id)] = {
+                'message': '📭 No messages yet',
+                'type': 'text',
+                'date': datetime.now().strftime('%d %b %Y • %I:%M %p')
+            }
     
     if not channels_data:
-        await status_msg.edit_text("📭 <b>No messages found in any channel.</b>", parse_mode=ParseMode.HTML)
+        await status_msg.edit_text("📭 <b>No channels found.</b>", parse_mode=ParseMode.HTML)
         return
     
-    # 🔥 Send as COMBINED message
     combined_msg = format_combined_message(channels_data)
     await status_msg.edit_text(combined_msg, parse_mode=ParseMode.HTML)
 
