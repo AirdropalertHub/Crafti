@@ -59,6 +59,8 @@ user_client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 # PART 2 - FILE HANDLING & HELPER FUNCTIONS
 # ============================================
 
+import re  # Add this import at top
+
 def load_channels():
     global MONITORED_CHANNELS
     try:
@@ -196,7 +198,7 @@ def get_channel_name(chat_id):
         return channel_names[chat_id_str]
     return f"Channel {abs(chat_id)}"
 
-# ============ MEDIA DOWNLOAD & FORMATTING (FIXED) ============
+# ============ MEDIA DOWNLOAD & FORMATTING ============
 
 async def download_media(message):
     try:
@@ -283,8 +285,6 @@ def get_message_type(message):
         return "audio"
 
     elif message.document:
-        # GIF / animation is normally represented as a document
-        # in Telethon, so don't use message.animation.
         try:
             mime_type = getattr(message.document, "mime_type", "") or ""
 
@@ -340,6 +340,13 @@ def format_channel_message(chat_id, message_text, message_id, message_type="text
     if message_text and len(message_text) > 1000:
         message_text = message_text[:997] + "..."
     
+    # Remove ** and make bold properly
+    if message_text:
+        # Convert **text** to <b>text</b> for HTML bold
+        message_text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', message_text)
+        # Remove single * if any (markdown)
+        message_text = re.sub(r'\*(.+?)\*', r'\1', message_text)
+    
     main_content = f"""{emoji} <b>{channel_name}</b>
 {media_emoji} <b>{message_type.upper()}</b>
 🕒 {timestamp}"""
@@ -350,7 +357,7 @@ def format_channel_message(chat_id, message_text, message_id, message_type="text
         msg_content = f"\n━━━━━━━━━━━━━━━━━━━━\n<em>📷 {message_type.upper()} message</em>"
     
     formatted_msg = f"""<blockquote expandable>
-<b>{main_content}{msg_content}</b>
+{main_content}{msg_content}
 </blockquote>"""
     return formatted_msg
 
@@ -376,8 +383,15 @@ def format_combined_message(channels_data):
         if msg_type != 'text' and not message_text:
             message_text = f"📷 {msg_type.upper()} message"
         
+        # Remove ** and make bold properly
+        if message_text:
+            # Convert **text** to <b>text</b> for HTML bold
+            message_text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', message_text)
+            # Remove single * if any (markdown)
+            message_text = re.sub(r'\*(.+?)\*', r'\1', message_text)
+        
         msg += f"""<blockquote expandable>
-<b>{emoji} {channel_name}</b>
+{emoji} <b>{channel_name}</b>
 {media_emoji} {msg_type.upper()}
 🕒 {data.get('date', timestamp)}
 ━━━━━━━━━━━━━━━━━━━━
