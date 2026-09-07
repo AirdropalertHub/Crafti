@@ -1,921 +1,760 @@
 import asyncio
 import json
-import sqlite3
-import time
-import requests
-import urllib.parse
-import uuid
+import os
+import logging
 from datetime import datetime
-from threading import Thread, Lock
-from flask import Flask, request, jsonify, render_template_string
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.enums import ParseMode
-from apscheduler.schedulers.background import BackgroundScheduler
+from aiogram.types import FSInputFile
+import aiohttp
+import aiofiles
+import tempfile
 
-# ========== CONFIG ==========
-# 🔴 REPLACE WITH YOUR NEW BOT TOKEN FROM @BotFather
-BOT_TOKEN = "8916402393:AAH_eFvnhkC9rbb4EW95tBdQTOUQqBiupPE"
+# Telethon imports
+from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 
-CHANNEL_ID = "-1003915320301"
-CHANNEL_LINK = "https://t.me/S4DlI5E"
-ATF_URL = "https://atfminers.asloni.online/miner/index.php"
-OWNER = "@xghostid"
+# Logging setup
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
-# ========== YOUR DATA ==========
-YOUR_TG_ID = "8497620413"
-YOUR_REF_CODE = "6254728836"
-YOUR_USERNAME = "xghostid"
-YOUR_DEVICE_ID = "dev-b12cd458-3bc0-4bb6-9240-e0e7d0970572"
+# ============ CONFIGURATION ============
+BOT_TOKEN = "8916402393:AAHXSC98Od-FyP9174D3uqgJkLZlX8H16AQ"
+GROUP_CHAT_ID = -5460865745  # Your group where messages will be posted
 
-# ========== YOUR LINK AND COOKIES ==========
-YOUR_LINK = "https://atfminers.asloni.online/miner/index.html?v=1788126044&entry=bot_start&ref=6254728836#tgWebAppData=query_id%3DAAG9ZX96AwAAAL1lf3ogPACr%26user%3D%257B%2522id%2522%253A8497620413%252C%2522first_name%2522%253A%2522%25E2%259C%25A7%25CB%259A%25E2%2582%258A%25E2%2580%25A7%25E2%2581%25BA%25CB%2596%25E2%2599%25A1%2522%252C%2522last_name%2522%253A%2522%2522%252C%2522username%2522%253A%2522xghostid%2522%252C%2522language_code%2522%253A%2522en%2522%252C%2522allows_write_to_pm%2522%253Atrue%252C%2522photo_url%2522%253A%2522https%253A%255C%252F%255C%252Ft.me%255C%252Fi%255C%252Fuserpic%255C%252F320%255C%252FPks3N73UAgvoRUmpYME3h1v31Z_RFwc8YXnZDeIcHgnpsQZA884aVJjR4-4L8XPa.svg%2522%257D%26auth_date%3D1788385618%26signature%3DQmoJjWhK98nhlK85_VkCilI6h8sFeXssOl0H2DkGyDxKx0C0oQ48WyFVpl7Efq310VwDwXzzbShC2DKicUR6DQ%26hash%3D426dfafdfc5cdc35bb20da29b2626925355dfeb5674fef682cefe467881426d8&tgWebAppVersion=9.6&tgWebAppPlatform=android&tgWebAppThemeParams=%7B%22bg_color%22%3A%22%231e1e1e%22%2C%22section_bg_color%22%3A%22%23181819%22%2C%22secondary_bg_color%22%3A%22%23000000%22%2C%22text_color%22%3A%22%23ffffff%22%2C%22hint_color%22%3A%22%237d7d7d%22%2C%22link_color%22%3A%22%237590e2%22%2C%22button_color%22%3A%22%23517af7%22%2C%22button_text_color%22%3A%22%23ffffff%22%2C%22header_bg_color%22%3A%22%23242326%22%2C%22accent_text_color%22%3A%22%23839ef0%22%2C%22section_header_text_color%22%3A%22%238b9ff9%22%2C%22subtitle_text_color%22%3A%22%237e7e7f%22%2C%22destructive_text_color%22%3A%22%23ee686f%22%2C%22section_separator_color%22%3A%22%23000000%22%2C%22bottom_bar_bg_color%22%3A%22%23000000%22%7D"
-YOUR_ATF_SESSION = "eyJ0Z19pZCI6Ijg0OTc2MjA0MTMiLCJpaCI6IjUwZmM0NzA4MjhlYTJhZGQyMTkxZWYxODEwNzFjZGE2YjVkOWE4MTZhMjVhZmYzNjZjMjIzM2FlN2YxYjg2NTYiLCJ1YSI6IiIsImhzdCI6ImF0Zm1pbmVycy5hc2xvbmkub25saW5lIiwiaWF0IjoxNzg4MzkyMDE5LCJleHAiOjE3ODg1NjQ4MTl9.0HcL_k2YfZAT3bWj92SkTRCJxtzMl3EP4t4b2zfINoU"
-YOUR_CF_CLEARANCE = "5hnY5bcu.2g24gfIgioqIqFjrwsHC1XRuNO4qmG5bP4-1788392020-1.2.1.1-lRw5bet2zMzYZ96YK4z0sFcWEfKL244fLD.SUre.qcgFRMkaxs4EigfEkWfkD9fFI57j2E6KqcF9y7ucM9Wt6w_qoFiBkq.t8VXZmmFgZ8aumiza9OqTHFnbBhCTzMvdmqt.dF188UtbVZaD0P2h1iRDO8sBHAYrbalBrSOwQxmCIc8f8O2_5ysFOuXVsxiUcAXk2Iu2mBMoE4TI8vnDuUVoKQDOogCxToM4eCIkWNdqop.FMkdz6jrwy3El4c5_g2.ud0He4reCFZaSQHKFh5Wnz8DvSAWoG_x2gEv.ekynBddGilHbnIXURH8J8rO3Pf0GRKrmIUoGnStZFwL42t1yfBXOJ6DhSR2WQWZ7SKY"
+# Your user account session string (from telethon)
+SESSION_STRING = "1BJWap1sAULh18SeSR-v7gM3lEGMsI23Lrv0PktasVxLkZWR_75cIBtyRONJ9AWf8AfUdAtKs3tR30lFAkpKx3zd5d9mGtJ5yvkjOEKxRiiGoVxilM2BXsUCcmsKZpTh3h_L4drVRpeAjhmvKjhYjURW2CmEzW6G2KY8MqWPPRHI2mXjimrYEhRnpKeAxG0b7U8Sd_4ZMLlk-SRTktixnn3Rimcrjvx5m3I9jQRzV20n4YLS3Nznpg6hW9XLI9uYvYw-u4uCvgTMxZNp90nOckCLpb5Ca3tNkYehuZaevLsZXAsBlVEwln7rTEAOaHrKcXbL48FKUGK8WZDTe5PG6k8D1gEwWZsk="  # Replace with your session string
+API_ID = 34408702  # Replace with your API ID
+API_HASH = "0d483149e1395cafd85e509d0b6978c3"  # Replace with your API Hash
 
-# ========== DATABASE ==========
-def init_db():
-    conn = sqlite3.connect('bot.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-        tg_id TEXT PRIMARY KEY,
-        link TEXT,
-        atf_session TEXT,
-        cf_clearance TEXT,
-        balance REAL DEFAULT 0,
-        pool REAL DEFAULT 0,
-        holding REAL DEFAULT 0,
-        level INTEGER DEFAULT 1,
-        progress REAL DEFAULT 0,
-        tasks TEXT DEFAULT '[]',
-        task_cooldowns TEXT DEFAULT '{}',
-        last_task TEXT,
-        last_claim TEXT,
-        next_claim TEXT,
-        claimable REAL DEFAULT 0,
-        active INTEGER DEFAULT 1,
-        first_name TEXT,
-        username TEXT,
-        ref_code TEXT,
-        device_id TEXT
-    )''')
-    conn.commit()
-    conn.close()
-    print("✅ Database initialized!")
-
-def migrate_db():
-    conn = sqlite3.connect('bot.db')
-    c = conn.cursor()
-    c.execute("PRAGMA table_info(users)")
-    columns = [row[1] for row in c.fetchall()]
-    
-    new_columns = {
-        "atf_session": "TEXT",
-        "cf_clearance": "TEXT",
-        "task_cooldowns": "TEXT DEFAULT '{}'",
-        "claimable": "REAL DEFAULT 0",
-        "ref_code": "TEXT",
-        "device_id": "TEXT"
-    }
-    
-    for col, col_type in new_columns.items():
-        if col not in columns:
-            c.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type}")
-            print(f"✅ Added {col} column")
-    
-    conn.commit()
-    conn.close()
-
-init_db()
-migrate_db()
-
-def db():
-    return sqlite3.connect('bot.db')
-
-# ========== EXTRACT TG DATA ==========
-def extract_tg_data(link):
-    if not link:
-        return None
-    parsed = urllib.parse.urlparse(link)
-    params = urllib.parse.parse_qs(parsed.query)
-    tg_data = params.get("tgWebAppData", [None])[0]
-    if not tg_data:
-        params = urllib.parse.parse_qs(parsed.fragment)
-        tg_data = params.get("tgWebAppData", [None])[0]
-    return tg_data
-
-def generate_request_id():
-    """Generate unique request_id like browser"""
-    return str(uuid.uuid4())
-
-# ========== FIXED: ATF API WITH EXACT BROWSER PAYLOAD ==========
-def call_atf(tg_data, atf_session, cf_clearance, action, extra=None):
-    t = int(time.time() * 1000)
-    url = f"{ATF_URL}?action={action}&t={t}"
-    
-    # ✅ EXACT PAYLOAD LIKE BROWSER
-    payload = {
-        "tgWebAppData": tg_data,
-        "device_id": YOUR_DEVICE_ID,
-        "ref_code": YOUR_REF_CODE,
-        "tg_id": YOUR_TG_ID,
-        "username": YOUR_USERNAME,
-        "initData": tg_data,  # Browser sends initData
-        "request_id": generate_request_id()
-    }
-    
-    if extra:
-        payload.update(extra)
-    
-    session = requests.Session()
-    
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Linux; Android 14; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.146 Mobile Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "en-PK,en-GB;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Content-Type": "application/json",
-        "Origin": "https://atfminers.asloni.online",
-        "Referer": "https://atfminers.asloni.online/miner/index.html?v=1786140012",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
-        "Connection": "keep-alive",
-        "Priority": "u=1,i"
-    })
-    
-    if atf_session:
-        session.cookies.set("atf_tma_session", atf_session, domain=".atfminers.asloni.online", path="/")
-    if cf_clearance:
-        session.cookies.set("cf_clearance", cf_clearance, domain=".atfminers.asloni.online", path="/")
-    
-    try:
-        response = session.post(url, json=payload, timeout=20)
-        print(f"[API] {action} | Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            return response.json()
-        elif response.status_code == 401:
-            return {"status": "error", "code": 401}
-        else:
-            return {"status": "error", "code": response.status_code}
-            
-    except Exception as e:
-        print(f"[API] {action} | Error: {e}")
-        return {"status": "error", "code": "exception"}
-
-# ========== SYNC USER ==========
-def sync_user(tg_id):
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT link, atf_session, cf_clearance FROM users WHERE tg_id = ?", (tg_id,))
-    user = c.fetchone()
-    conn.close()
-
-    if not user or not user[0]:
-        print(f"[SYNC] {tg_id}: Missing link")
-        return False
-
-    tg_data = extract_tg_data(user[0])
-    if not tg_data:
-        print(f"[SYNC] {tg_id}: No tgWebAppData")
-        return False
-
-    res = call_atf(tg_data, user[1], user[2], "sync_wallet")
-
-    if res.get("code") == 401:
-        print(f"[SYNC] {tg_id}: ❌ 401")
-        return False
-
-    if res.get("status") != "success":
-        print(f"[SYNC ERROR] {tg_id}: {res}")
-        return False
-
-    try:
-        data = res.get("user", {})
-        
-        mined = float(data.get("mined_balance", 0))
-        holding = float(data.get("wallet_holding_atf", 0))
-        balance = float(data.get("assets_total", mined + holding))
-        claimable_now = float(res.get("claimable_now", 0))
-        level = int(data.get("miner_level", 1))
-        progress = float(data.get("level_pending_withdraw_atf", 0))
-        completed = data.get("completed_tasks", [])
-        cooldowns = res.get("task_cooldowns", {})
-        
-        # Update session token if provided
-        if res.get("tma_session_token"):
-            new_token = res.get("tma_session_token")
-            if new_token != user[1]:
-                conn = db()
-                c = conn.cursor()
-                c.execute("UPDATE users SET atf_session = ? WHERE tg_id = ?", (new_token, tg_id))
-                conn.commit()
-                conn.close()
-                print(f"[SYNC] {tg_id}: ✅ Session token updated!")
-
-        conn = db()
-        c = conn.cursor()
-        c.execute("""UPDATE users SET 
-            pool = ?, holding = ?, balance = ?, 
-            level = ?, progress = ?, 
-            tasks = ?, task_cooldowns = ?,
-            claimable = ?
-            WHERE tg_id = ?""",
-            (mined, holding, balance, level, progress,
-             json.dumps(completed), json.dumps(cooldowns), claimable_now, tg_id))
-        conn.commit()
-        conn.close()
-
-        print(f"[SYNC] {tg_id} | Balance={balance} | Claimable={claimable_now} | Level={level}")
-        return True
-    except Exception as e:
-        print(f"[SYNC ERROR] {tg_id}: {e}")
-        return False
-
-# ========== DO TASKS ==========
-def do_tasks(tg_id):
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT link, atf_session, cf_clearance, tasks, task_cooldowns FROM users WHERE tg_id = ?", (tg_id,))
-    user = c.fetchone()
-    conn.close()
-    
-    if not user or not user[1] or not user[2]:
-        return False
-    
-    tg_data = extract_tg_data(user[0])
-    if not tg_data:
-        return False
-    
-    done = json.loads(user[3] or '[]')
-    cooldowns = json.loads(user[4] or '{}')
-    current_time = int(time.time())
-    
-    all_tasks = ["telegram_join", "telegram_join_fa", "twitter_follow",
-                 "youtube_subscribe", "telegram_react_latest", "website_visit",
-                 "youtube_like_comment", "twitter_retweet"]
-    
-    available_tasks = []
-    for task in all_tasks:
-        if task in done:
-            continue
-        cooldown_time = cooldowns.get(task, 0)
-        if cooldown_time > current_time:
-            continue
-        available_tasks.append(task)
-    
-    if not available_tasks:
-        print(f"[TASKS] {tg_id}: No available tasks")
-        return False
-    
-    print(f"[TASKS] {tg_id}: Available: {available_tasks}")
-    
-    for task in available_tasks:
-        print(f"[TASKS] {tg_id}: Doing {task}")
-        res = call_atf(tg_data, user[1], user[2], task)
-        
-        if res.get("code") == 401:
-            print(f"[TASKS] {tg_id}: ❌ 401")
-            return False
-        
-        if res.get("status") == "success":
-            server_cooldowns = res.get("task_cooldowns")
-            if server_cooldowns:
-                cooldowns.update(server_cooldowns)
-        
-        time.sleep(2)
-    
-    conn = db()
-    c = conn.cursor()
-    c.execute("UPDATE users SET task_cooldowns = ?, last_task = CURRENT_TIMESTAMP WHERE tg_id = ?",
-              (json.dumps(cooldowns), tg_id))
-    conn.commit()
-    conn.close()
-    
-    return True
-
-# ========== CLAIM REWARDS (FIXED) ==========
-def claim_rewards(tg_id):
-    conn = db()
-    c = conn.cursor()
-    c.execute("""
-        SELECT link, atf_session, cf_clearance, claimable
-        FROM users WHERE tg_id = ?
-    """, (tg_id,))
-    user = c.fetchone()
-    conn.close()
-
-    if not user:
-        print(f"[CLAIM] {tg_id}: User not found")
-        return False
-
-    if user[3] is None or float(user[3]) <= 0:
-        print(f"[CLAIM] {tg_id}: Nothing claimable")
-        return False
-
-    tg_data = extract_tg_data(user[0])
-    if not tg_data:
-        print(f"[CLAIM] {tg_id}: Missing tgWebAppData")
-        return False
-
-    res = call_atf(tg_data, user[1], user[2], "claim")
-
-    if res.get("status") != "success":
-        print(f"[CLAIM] {tg_id}: Claim failed: {res}")
-        return False
-
-    claimed = float(res.get("claimed_amount", 0))
-    new_balance = float(
-        res.get("new_pool_balance",
-                res.get("assets_total", 0))
-    )
-    new_level = int(res.get("new_level", 1))
-
-    conn = db()
-    c = conn.cursor()
-
-    c.execute("""
-        UPDATE users SET
-            balance = ?,
-            pool = ?,
-            level = ?,
-            last_claim = CURRENT_TIMESTAMP,
-            claimable = 0
-        WHERE tg_id = ?
-    """, (new_balance, new_balance, new_level, tg_id))
-
-    conn.commit()
-    conn.close()
-
-    print(
-        f"[CLAIM] {tg_id}: "
-        f"+{claimed:.4f} ATF | "
-        f"Balance={new_balance:.4f} | "
-        f"Level={new_level}"
-    )
-
-    return True
-
-# ========== MINE NOW (FIXED) ==========
-def mine_now(tg_id):
-    print(f"[MINE] {tg_id}: Starting...")
-
-    if not sync_user(tg_id):
-        print(f"[MINE] {tg_id}: Sync failed")
-        return False
-
-    do_tasks(tg_id)
-
-    if not sync_user(tg_id):
-        print(f"[MINE] {tg_id}: Second sync failed")
-        return False
-
-    if not claim_rewards(tg_id):
-        print(f"[MINE] {tg_id}: Claim failed/not available")
-        return False
-
-    sync_user(tg_id)
-
-    print(f"[MINE] {tg_id}: Completed!")
-    return True
-
-# ========== PROCESS ==========
-processing_locks = {}
-
-def process_user(tg_id):
-    if tg_id not in processing_locks:
-        processing_locks[tg_id] = Lock()
-    
-    if not processing_locks[tg_id].acquire(blocking=False):
-        print(f"[PROCESS] {tg_id}: Already processing")
-        return
-    
-    try:
-        mine_now(tg_id)
-    except Exception as e:
-        print(f"[PROCESS] {tg_id}: Error: {e}")
-    finally:
-        processing_locks[tg_id].release()
-
-def process_all():
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT tg_id FROM users WHERE active = 1")
-    users = c.fetchall()
-    conn.close()
-    for u in users:
-        try:
-            process_user(u[0])
-        except Exception as e:
-            print(f"Error processing {u[0]}: {e}")
-            # ========== FLASK APP ==========
-app = Flask(__name__)
-
-HTML_DASHBOARD = '''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>ATF Bot</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:system-ui;background:#0a0a1a;color:#fff;padding:15px}
-        .container{max-width:1000px;margin:auto}
-        h1{text-align:center;font-size:22px;margin-bottom:20px;color:#4a9eff}
-        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:20px}
-        .stat{background:rgba(255,255,255,0.03);padding:15px;border-radius:10px;text-align:center;border:1px solid rgba(255,255,255,0.05)}
-        .stat .num{font-size:26px;font-weight:700;color:#4a9eff}
-        .stat .lbl{font-size:11px;color:#667788;margin-top:4px}
-        .card{background:rgba(255,255,255,0.03);border-radius:10px;padding:12px 15px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05)}
-        .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
-        .name{font-weight:600;font-size:14px}
-        .id{color:#667788;font-size:11px}
-        .bal{color:#4a9eff;font-weight:600;font-size:15px}
-        .level{color:#8899bb;font-size:12px}
-        .status{font-size:11px;padding:2px 10px;border-radius:20px}
-        .online{color:#00b894;background:rgba(0,184,148,0.1)}
-        .offline{color:#ff6b6b;background:rgba(255,107,107,0.1)}
-        .time{color:#667788;font-size:11px}
-        .footer{text-align:center;margin-top:30px;color:#667788;font-size:12px;border-top:1px solid rgba(255,255,255,0.05);padding-top:15px}
-        .refresh-btn{background:#4a9eff;border:none;color:#fff;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px}
-        .refresh-btn:hover{opacity:0.8}
-        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📊 ATF Dashboard</h1>
-            <button class="refresh-btn" onclick="load()">🔄 Refresh</button>
-        </div>
-        <div class="stats">
-            <div class="stat"><div class="num" id="total">0</div><div class="lbl">Users</div></div>
-            <div class="stat"><div class="num" id="bal">0</div><div class="lbl">Total ATF</div></div>
-            <div class="stat"><div class="num" id="active">0</div><div class="lbl">Active</div></div>
-            <div class="stat"><div class="num" id="avg">0</div><div class="lbl">Avg Level</div></div>
-        </div>
-        <div id="users"></div>
-        <div class="footer">🤖 Powered by Hashu | 💬 @xghostid</div>
-    </div>
-    <script>
-        async function load(){
-            try{
-                const r=await fetch('/api/users');
-                const data=await r.json();
-                document.getElementById('total').textContent=data.total;
-                document.getElementById('bal').textContent=data.total_balance.toFixed(2);
-                document.getElementById('active').textContent=data.active;
-                document.getElementById('avg').textContent=data.avg_level.toFixed(1);
-                let html='';
-                data.users.forEach(u=>{
-                    html+=`
-                    <div class="card">
-                        <div class="row">
-                            <div>
-                                <div class="name">${u.name}</div>
-                                <div class="id">ID: ${u.tg_id}</div>
-                            </div>
-                            <div style="text-align:right">
-                                <div class="bal">${u.balance.toFixed(4)} ATF</div>
-                                <div class="level">Level ${u.level} (${u.progress}%)</div>
-                            </div>
-                        </div>
-                        <div class="row" style="margin-top:6px">
-                            <span class="time">⏳ ${u.next_claim || 'Ready'}</span>
-                            <span class="status ${u.active?'online':'offline'}">${u.active?'🟢 Active':'🔴 Offline'}</span>
-                        </div>
-                    </div>
-                    `;
-                });
-                document.getElementById('users').innerHTML = html || '<div style="text-align:center;padding:40px;color:#667788">No users added yet</div>';
-            }catch(e){}
-        }
-        load();
-        setInterval(load, 30000);
-    </script>
-</body>
-</html>
-'''
-
-@app.route('/')
-def index():
-    return render_template_string(HTML_DASHBOARD)
-
-@app.route('/api/users')
-def get_users():
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT tg_id, balance, level, progress, next_claim, active, first_name, username FROM users")
-    users = c.fetchall()
-    conn.close()
-    
-    result = []
-    total_bal = 0
-    active = 0
-    total_level = 0
-    
-    for u in users:
-        total_bal += u[1]
-        total_level += u[2]
-        if u[5]: active += 1
-        name = u[6] or u[7] or u[0][:8]
-        result.append({
-            'tg_id': u[0],
-            'name': name,
-            'balance': u[1],
-            'level': u[2],
-            'progress': round(u[3], 1),
-            'next_claim': u[4],
-            'active': bool(u[5])
-        })
-    
-    return jsonify({
-        'users': result,
-        'total': len(result),
-        'total_balance': total_bal,
-        'active': active,
-        'avg_level': total_level / len(result) if result else 0
-    })
-
-@app.route('/api/add', methods=['POST'])
-def add_user():
-    data = request.json
-    tg_id = data.get('tg_id')
-    link = data.get('link')
-    atf_session = data.get('atf_session')
-    cf_clearance = data.get('cf_clearance')
-    name = data.get('name', '')
-    
-    if not all([tg_id, link, atf_session, cf_clearance]):
-        return jsonify({'error': 'Missing data'}), 400
-    
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT tg_id FROM users WHERE tg_id = ?", (tg_id,))
-    exists = c.fetchone()
-    
-    if exists:
-        c.execute("""UPDATE users SET 
-            link = ?, atf_session = ?, cf_clearance = ?, first_name = ? 
-            WHERE tg_id = ?""",
-                  (link, atf_session, cf_clearance, name, tg_id))
-    else:
-        c.execute("""INSERT INTO users 
-            (tg_id, link, atf_session, cf_clearance, first_name, ref_code, device_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                  (tg_id, link, atf_session, cf_clearance, name, YOUR_REF_CODE, YOUR_DEVICE_ID))
-    
-    conn.commit()
-    conn.close()
-    
-    sync_user(tg_id)
-    return jsonify({'ok': True})
-
-@app.route('/api/balance/<tg_id>')
-def get_balance(tg_id):
-    sync_user(tg_id)
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT balance, level, progress, next_claim FROM users WHERE tg_id = ?", (tg_id,))
-    user = c.fetchone()
-    conn.close()
-    if not user: return jsonify({'error': 'Not found'}), 404
-    return jsonify({
-        'balance': round(user[0], 4),
-        'level': user[1],
-        'progress': round(user[2], 1),
-        'next_claim': user[3] or 'Ready'
-    })
-
-@app.route('/api/refresh/<tg_id>')
-def refresh_user(tg_id):
-    mine_now(tg_id)
-    return jsonify({'ok': True})
-
-@app.route('/api/debug/<tg_id>')
-def debug_user(tg_id):
-    conn = db()
-    c = conn.cursor()
-    c.execute("""SELECT tg_id, link IS NOT NULL, atf_session IS NOT NULL, 
-                cf_clearance IS NOT NULL, balance, level, next_claim 
-                FROM users WHERE tg_id = ?""", (tg_id,))
-    user = c.fetchone()
-    conn.close()
-    if not user:
-        return jsonify({'error': 'User not found'})
-    return jsonify({
-        'tg_id': user[0],
-        'has_link': bool(user[1]),
-        'has_atf_session': bool(user[2]),
-        'has_cf_clearance': bool(user[3]),
-        'balance': user[4],
-        'level': user[5],
-        'next_claim': user[6]
-    })
-    # ========== AUTO ADD YOUR ACCOUNT ==========
-def auto_add_your_account():
-    if not YOUR_LINK or not YOUR_ATF_SESSION or not YOUR_CF_CLEARANCE:
-        print("⚠️ No default account configured")
-        return
-    
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT tg_id FROM users WHERE tg_id = ?", (YOUR_TG_ID,))
-    exists = c.fetchone()
-    
-    if not exists:
-        c.execute("""INSERT INTO users 
-            (tg_id, link, atf_session, cf_clearance, first_name, username, ref_code, device_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                  (YOUR_TG_ID, YOUR_LINK, YOUR_ATF_SESSION, YOUR_CF_CLEARANCE, 
-                   "Hashu", "xghostid", YOUR_REF_CODE, YOUR_DEVICE_ID))
-        conn.commit()
-        print(f"✅ Auto-added your account: {YOUR_TG_ID}")
-    else:
-        c.execute("""UPDATE users SET 
-            link = ?, atf_session = ?, cf_clearance = ? 
-            WHERE tg_id = ?""",
-                  (YOUR_LINK, YOUR_ATF_SESSION, YOUR_CF_CLEARANCE, YOUR_TG_ID))
-        conn.commit()
-        print(f"✅ Updated your account: {YOUR_TG_ID}")
-    
-    conn.close()
-    sync_user(YOUR_TG_ID)
-
-# ========== TELEGRAM BOT ==========
+# Bot initialize
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-async def is_member(user_id):
+# ============ MONITORED CHANNELS ============
+MONITORED_CHANNELS = [
+    -1003493566737,
+    -1002928942881,
+    -1003174711871,
+    -1002843941054,
+    -1002563415514,
+    -1002394625189,
+    -1002242996231,
+    -1003656142433
+]
+
+# Colorful emojis for channels
+CHANNEL_EMOJIS = [
+    "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", 
+    "⚫", "⚪", "🩵", "🩷", "🤍", "🖤", 
+    "💜", "💙", "💚", "💛", "🧡", "⬜", 
+    "🔶", "☑️", "🆕", "🟤", "🔴", "🟣"
+]
+
+# File to save channels
+CHANNELS_FILE = "monitored_channels.json"
+LAST_MESSAGE_FILE = "last_messages.json"
+CHANNEL_NAMES_FILE = "channel_names.json"
+CHANNEL_EMOJI_FILE = "channel_emoji.json"
+
+# Store last message IDs per channel
+last_message_ids = {}
+channel_names = {}
+channel_emojis = {}
+# ============ SESSION & FILE HANDLING ============
+# Create client with session string
+user_client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
+
+def load_channels():
+    """Load monitored channels from file"""
+    global MONITORED_CHANNELS
     try:
-        m = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
-        return m.status in ["member", "administrator", "creator"]
+        if os.path.exists(CHANNELS_FILE):
+            with open(CHANNELS_FILE, 'r') as f:
+                MONITORED_CHANNELS = json.load(f)
+                logger.info(f"✅ Loaded {len(MONITORED_CHANNELS)} channels")
+                return MONITORED_CHANNELS
     except Exception as e:
-        print(f"Member check error: {e}")
-        return False
+        logger.error(f"Error loading channels: {e}")
+    
+    MONITORED_CHANNELS = [
+        -1003493566737,
+        -1002928942881,
+        -1003174711871,
+        -1002843941054,
+        -1002563415514,
+        -1002394625189,
+        -1002242996231,
+        -1003656142433
+    ]
+    save_channels()
+    return MONITORED_CHANNELS
 
-def get_menu():
-    return {
-        "inline_keyboard": [
-            [{"text": "🍪 Add Cookies", "callback_data": "add", "style": "primary"}, {"text": "💰 Balance", "callback_data": "bal", "style": "success"}],
-            [{"text": "📊 Stats", "callback_data": "stats", "style": "primary"}, {"text": "⛏️ Mine & Claim", "callback_data": "mine", "style": "success"}],
-            [{"text": "💬 Support", "url": "https://t.me/xghostid", "style": "danger"}]
-        ]
+def save_channels():
+    """Save monitored channels to file"""
+    try:
+        with open(CHANNELS_FILE, 'w') as f:
+            json.dump(MONITORED_CHANNELS, f, indent=2)
+        logger.info(f"✅ Saved {len(MONITORED_CHANNELS)} channels")
+    except Exception as e:
+        logger.error(f"Error saving channels: {e}")
+
+def load_last_messages():
+    """Load last message IDs from file"""
+    global last_message_ids
+    try:
+        if os.path.exists(LAST_MESSAGE_FILE):
+            with open(LAST_MESSAGE_FILE, 'r') as f:
+                last_message_ids = json.load(f)
+                logger.info(f"✅ Loaded last messages for {len(last_message_ids)} channels")
+                return last_message_ids
+    except Exception as e:
+        logger.error(f"Error loading last messages: {e}")
+    
+    last_message_ids = {}
+    return last_message_ids
+
+def save_last_messages():
+    """Save last message IDs to file"""
+    try:
+        with open(LAST_MESSAGE_FILE, 'w') as f:
+            json.dump(last_message_ids, f, indent=2)
+        logger.info(f"✅ Saved last messages for {len(last_message_ids)} channels")
+    except Exception as e:
+        logger.error(f"Error saving last messages: {e}")
+
+async def load_channel_names():
+    """Load channel names from file"""
+    global channel_names
+    try:
+        if os.path.exists(CHANNEL_NAMES_FILE):
+            with open(CHANNEL_NAMES_FILE, 'r') as f:
+                channel_names = json.load(f)
+                logger.info(f"✅ Loaded {len(channel_names)} channel names")
+                return channel_names
+    except Exception as e:
+        logger.error(f"Error loading channel names: {e}")
+    
+    channel_names = {}
+    return channel_names
+
+async def save_channel_names():
+    """Save channel names to file"""
+    try:
+        with open(CHANNEL_NAMES_FILE, 'w') as f:
+            json.dump(channel_names, f, indent=2)
+        logger.info(f"✅ Saved {len(channel_names)} channel names")
+    except Exception as e:
+        logger.error(f"Error saving channel names: {e}")
+
+async def load_channel_emojis():
+    """Load channel emojis from file"""
+    global channel_emojis
+    try:
+        if os.path.exists(CHANNEL_EMOJI_FILE):
+            with open(CHANNEL_EMOJI_FILE, 'r') as f:
+                channel_emojis = json.load(f)
+                logger.info(f"✅ Loaded {len(channel_emojis)} channel emojis")
+                return channel_emojis
+    except Exception as e:
+        logger.error(f"Error loading channel emojis: {e}")
+    
+    channel_emojis = {}
+    return channel_emojis
+
+async def save_channel_emojis():
+    """Save channel emojis to file"""
+    try:
+        with open(CHANNEL_EMOJI_FILE, 'w') as f:
+            json.dump(channel_emojis, f, indent=2)
+        logger.info(f"✅ Saved {len(channel_emojis)} channel emojis")
+    except Exception as e:
+        logger.error(f"Error saving channel emojis: {e}")
+
+def get_channel_emoji(chat_id):
+    """Get emoji for channel"""
+    chat_id_str = str(chat_id)
+    if chat_id_str in channel_emojis:
+        return channel_emojis[chat_id_str]
+    
+    # Assign new emoji
+    available_emojis = [e for e in CHANNEL_EMOJIS if e not in channel_emojis.values()]
+    if available_emojis:
+        emoji = available_emojis[0]
+    else:
+        emoji = "🔴"
+    
+    channel_emojis[chat_id_str] = emoji
+    asyncio.create_task(save_channel_emojis())
+    return emoji
+
+async def get_channel_name_from_telethon(chat_id):
+    """Get channel name using Telethon"""
+    try:
+        entity = await user_client.get_entity(chat_id)
+        if hasattr(entity, 'title'):
+            return entity.title
+        elif hasattr(entity, 'first_name'):
+            return entity.first_name
+        else:
+            return f"Channel {abs(chat_id)}"
+    except Exception as e:
+        logger.error(f"Error getting channel name for {chat_id}: {e}")
+        return f"Channel {abs(chat_id)}"
+
+async def update_channel_names():
+    """Update all channel names"""
+    for chat_id in MONITORED_CHANNELS:
+        try:
+            name = await get_channel_name_from_telethon(chat_id)
+            channel_names[str(chat_id)] = name
+            logger.info(f"📛 Channel {chat_id}: {name}")
+            # Assign emoji
+            get_channel_emoji(chat_id)
+        except Exception as e:
+            logger.error(f"Failed to get name for {chat_id}: {e}")
+    
+    await save_channel_names()
+    await save_channel_emojis()
+
+def get_channel_name(chat_id):
+    """Get channel name from cache"""
+    chat_id_str = str(chat_id)
+    if chat_id_str in channel_names:
+        return channel_names[chat_id_str]
+    return f"Channel {abs(chat_id)}"
+    # ============ MEDIA DOWNLOAD & FORMATTING ============
+async def download_media(message):
+    """Download media from message and return file path"""
+    try:
+        os.makedirs('media_cache', exist_ok=True)
+        
+        file_path = None
+        file_name = None
+        
+        if message.photo:
+            photo = message.photo[-1]
+            file_name = f"media_cache/photo_{message.id}_{datetime.now().timestamp()}.jpg"
+            file_path = await user_client.download_media(photo, file=file_name)
+            
+        elif message.document:
+            file_name = f"media_cache/doc_{message.id}_{datetime.now().timestamp()}_{message.document.file_name or 'document'}"
+            file_path = await user_client.download_media(message.document, file=file_name)
+            
+        elif message.voice:
+            file_name = f"media_cache/voice_{message.id}_{datetime.now().timestamp()}.ogg"
+            file_path = await user_client.download_media(message.voice, file=file_name)
+            
+        elif message.video:
+            file_name = f"media_cache/video_{message.id}_{datetime.now().timestamp()}.mp4"
+            file_path = await user_client.download_media(message.video, file=file_name)
+            
+        elif message.audio:
+            file_name = f"media_cache/audio_{message.id}_{datetime.now().timestamp()}.mp3"
+            file_path = await user_client.download_media(message.audio, file=file_name)
+            
+        elif message.sticker:
+            file_name = f"media_cache/sticker_{message.id}_{datetime.now().timestamp()}.webp"
+            file_path = await user_client.download_media(message.sticker, file=file_name)
+            
+        elif message.animation:
+            file_name = f"media_cache/gif_{message.id}_{datetime.now().timestamp()}.mp4"
+            file_path = await user_client.download_media(message.animation, file=file_name)
+            
+        return file_path, file_name
+        
+    except Exception as e:
+        logger.error(f"Error downloading media: {e}")
+        return None, None
+
+def get_message_type(message):
+    """Get the type of message"""
+    if message.voice:
+        return "voice"
+    elif message.photo:
+        return "photo"
+    elif message.video:
+        return "video"
+    elif message.document:
+        return "document"
+    elif message.sticker:
+        return "sticker"
+    elif message.animation:
+        return "gif"
+    elif message.audio:
+        return "audio"
+    elif message.text:
+        return "text"
+    else:
+        return "unknown"
+
+def get_media_emoji(message_type):
+    """Get emoji for media type"""
+    emojis = {
+        "voice": "🎙️",
+        "photo": "📸",
+        "video": "🎬",
+        "document": "📄",
+        "sticker": "🎨",
+        "gif": "🎞️",
+        "audio": "🎵",
+        "text": "📝"
     }
+    return emojis.get(message_type, "📩")
 
-def get_back():
-    return {"inline_keyboard": [[{"text": "🔙 Back", "callback_data": "back", "style": "danger"}]]}
+def format_channel_message(chat_id, message_text, message_id, message_type="text", username=None):
+    """Format message with channel name, emoji and timestamp - COLLAPSIBLE"""
+    channel_name = get_channel_name(chat_id)
+    emoji = get_channel_emoji(chat_id)
+    timestamp = datetime.now().strftime("%d %b %Y • %I:%M %p")
+    media_emoji = get_media_emoji(message_type)
+    
+    if message_text and len(message_text) > 1000:
+        message_text = message_text[:997] + "..."
+    
+    # Main content (collapsible)
+    main_content = f"""{emoji} <b>{channel_name}</b>
+{media_emoji} <b>{message_type.upper()}</b>
+🕒 {timestamp}"""
 
-def get_join():
-    return {"inline_keyboard": [[{"text": "🔔 Join Channel", "url": CHANNEL_LINK, "style": "primary"}], [{"text": "✅ I've Joined", "callback_data": "joined", "style": "success"}]]}
+    # Message content
+    if message_text:
+        msg_content = f"\n━━━━━━━━━━━━━━━━━━━━\n{message_text}"
+    else:
+        msg_content = f"\n━━━━━━━━━━━━━━━━━━━━\n<em>📷 {message_type.upper()} message</em>"
+    
+    # 🔥 COLLAPSIBLE BLOCKQUOTE
+    formatted_msg = f"""<blockquote expandable>
+<b>{main_content}{msg_content}</b>
+</blockquote>"""
+    
+    return formatted_msg
 
-# ========== BOT HANDLERS ==========
+def format_combined_message(channels_data):
+    """Format combined message from all channels - COLLAPSIBLE"""
+    if not channels_data:
+        return "<b>📭 No messages found</b>"
+    
+    timestamp = datetime.now().strftime("%d %b %Y • %I:%M %p")
+    
+    msg = f"""<blockquote>
+<b>🌅 ALL CHANNELS - LATEST UPDATES</b>
+🕒 {timestamp}
+</blockquote>
+"""
+    
+    for chat_id, data in channels_data.items():
+        channel_name = get_channel_name(int(chat_id))
+        emoji = get_channel_emoji(int(chat_id))
+        msg_type = data.get('type', 'text')
+        media_emoji = get_media_emoji(msg_type)
+        message = data.get('message', 'No message')
+        
+        msg += f"""<blockquote expandable>
+<b>{emoji} {channel_name}</b>
+{media_emoji} {msg_type.upper()}
+━━━━━━━━━━━━━━━━━━━━
+{message}
+</blockquote>
+"""
+    
+    return msg
+
+def format_channel_list():
+    """Format list of monitored channels with emojis"""
+    if not MONITORED_CHANNELS:
+        return "<b>📭 No channels being monitored</b>"
+    
+    msg = "<b>📡 MONITORED CHANNELS</b>\n\n"
+    for idx, chat_id in enumerate(MONITORED_CHANNELS, 1):
+        name = get_channel_name(chat_id)
+        emoji = get_channel_emoji(chat_id)
+        msg += f"{idx}. {emoji} <b>{name}</b>\n"
+        msg += f"   📌 ID: <code>{chat_id}</code>\n"
+    
+    return msg
+    # ============ CHANNEL MONITORING ============
+async def process_message(message):
+    """Process a message from monitored channel"""
+    try:
+        chat_id = message.chat_id
+        msg_id = message.id
+        
+        # Check if already processed
+        last_id = last_message_ids.get(str(chat_id), 0)
+        if msg_id <= last_id:
+            return
+        
+        # Update last message ID
+        last_message_ids[str(chat_id)] = msg_id
+        save_last_messages()
+        
+        # Get message type and text
+        msg_type = get_message_type(message)
+        msg_text = message.text or message.caption or None
+        
+        # Format message
+        formatted_msg = format_channel_message(
+            chat_id,
+            msg_text,
+            msg_id,
+            msg_type
+        )
+        
+        # Send based on media type
+        if message.voice:
+            file_path, file_name = await download_media(message)
+            if file_path and os.path.exists(file_path):
+                await bot.send_voice(
+                    GROUP_CHAT_ID,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML
+                )
+                os.remove(file_path)
+            else:
+                await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
+        elif message.photo:
+            file_path, file_name = await download_media(message)
+            if file_path and os.path.exists(file_path):
+                await bot.send_photo(
+                    GROUP_CHAT_ID,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML
+                )
+                os.remove(file_path)
+            else:
+                await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
+        elif message.video:
+            file_path, file_name = await download_media(message)
+            if file_path and os.path.exists(file_path):
+                await bot.send_video(
+                    GROUP_CHAT_ID,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML
+                )
+                os.remove(file_path)
+            else:
+                await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
+        elif message.document:
+            file_path, file_name = await download_media(message)
+            if file_path and os.path.exists(file_path):
+                await bot.send_document(
+                    GROUP_CHAT_ID,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML
+                )
+                os.remove(file_path)
+            else:
+                await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
+        elif message.sticker:
+            file_path, file_name = await download_media(message)
+            if file_path and os.path.exists(file_path):
+                await bot.send_sticker(GROUP_CHAT_ID, FSInputFile(file_path))
+                await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                os.remove(file_path)
+            else:
+                await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
+        elif message.animation:
+            file_path, file_name = await download_media(message)
+            if file_path and os.path.exists(file_path):
+                await bot.send_animation(
+                    GROUP_CHAT_ID,
+                    FSInputFile(file_path),
+                    caption=formatted_msg,
+                    parse_mode=ParseMode.HTML
+                )
+                os.remove(file_path)
+            else:
+                await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                
+        else:
+            await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+        
+        logger.info(f"📨 Sent {msg_type} from channel {chat_id}: {msg_id}")
+        
+    except Exception as e:
+        logger.error(f"Error processing message: {e}")
+
+async def monitor_channels():
+    """Monitor all channels for new messages"""
+    logger.info("🚀 Starting channel monitor...")
+    
+    @user_client.on(events.NewMessage(chats=MONITORED_CHANNELS))
+    async def handler(event):
+        await process_message(event.message)
+    
+    await user_client.run_until_disconnected()
+
+async def get_channel_last_messages(chat_id, limit=2):
+    """Get last N messages from a specific channel"""
+    try:
+        messages = []
+        async for msg in user_client.iter_messages(chat_id, limit=limit):
+            msg_type = get_message_type(msg)
+            msg_text = msg.text or msg.caption or f"📷 {msg_type.upper()} message"
+            
+            messages.append({
+                'message_id': msg.id,
+                'message': msg_text,
+                'type': msg_type,
+                'date': msg.date
+            })
+        return messages
+    except Exception as e:
+        logger.error(f"Error getting messages from {chat_id}: {e}")
+        return []
+
+async def get_all_channels_last_messages(limit=2):
+    """Get last N messages from all monitored channels"""
+    result = {}
+    for chat_id in MONITORED_CHANNELS:
+        messages = await get_channel_last_messages(chat_id, limit)
+        if messages:
+            result[str(chat_id)] = messages
+    return result
+    # ============ COMMAND HANDLERS ============
 
 @dp.message(Command("start"))
-async def start(msg: types.Message):
-    tg_id = str(msg.from_user.id)
-    name = msg.from_user.first_name or "User"
-    username = msg.from_user.username or ""
-    
-    if not await is_member(tg_id):
-        await msg.answer(f"👋 Welcome {name}!\n\n⚠️ Please join our channel first.\n\n🔗 {CHANNEL_LINK}", reply_markup=get_join(), parse_mode=ParseMode.HTML)
-        return
-    
-    conn = db()
-    c = conn.cursor()
-    c.execute("UPDATE users SET first_name = ?, username = ? WHERE tg_id = ?", (name, username, tg_id))
-    c.execute("SELECT balance, level, progress, next_claim FROM users WHERE tg_id = ?", (tg_id,))
-    user = c.fetchone()
-    conn.commit()
-    conn.close()
-    
-    text = "🚀 <b>ATF Bot</b>\n\n"
-    if user:
-        text += f"💰 Balance: <code>{user[0]:.4f}</code> ATF\n"
-        text += f"📈 Level: {user[1]}\n"
-        text += f"📊 Progress: {user[2]:.1f}%\n"
-        text += f"⏳ Next Claim: {user[3] or 'Ready'}\n"
-    else:
-        text += "❌ No account linked\n\nSend <b>BOTH</b> cookies:\n• atf_tma_session\n• cf_clearance"
-    text += "\n\nSelect option:"
-    
-    await msg.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
+async def start_command(message: types.Message):
+    """Start command - show bot info"""
+    await message.reply(
+        f"""<blockquote>
+<b>🤖 Channel Monitor Bot</b>
 
-@dp.callback_query(F.data == "joined")
-async def joined(call: types.CallbackQuery):
-    tg_id = str(call.from_user.id)
-    if await is_member(tg_id):
-        await call.message.delete()
-        await start(call.message)
-    else:
-        await call.answer("❌ Not joined yet!", show_alert=True)
+✅ <b>Bot is online</b>
+📡 Monitoring <b>{len(MONITORED_CHANNELS)}</b> channels
+🎙️ Voice messages supported
+📸 Media messages supported
 
-@dp.callback_query(F.data == "add")
-async def add_cookie(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "🍪 <b>Send BOTH cookies</b>\n\n"
-        "Format:\n"
-        "<code>atf_session: YOUR_atf_tma_session</code>\n"
-        "<code>cf_clearance: YOUR_cf_clearance</code>\n\n"
-        "📌 How to get:\n"
-        "1. Open ATF in browser\n"
-        "2. F12 → Application → Cookies\n"
-        "3. Copy BOTH values",
-        reply_markup=get_back(),
+<b>📋 Commands:</b>
+/channels - <b>List monitored channels</b>
+/last - <b>Get last 2 messages from all channels</b>
+/addchannel - <b>Add channel to monitor</b>
+/removechannel - <b>Remove channel from monitoring</b>
+
+<i>New messages from monitored channels are automatically posted here.</i>
+</blockquote>""",
         parse_mode=ParseMode.HTML
     )
 
-@dp.callback_query(F.data == "bal")
-async def balance(call: types.CallbackQuery):
-    tg_id = str(call.from_user.id)
-    await call.answer("Fetching...")
-    sync_user(tg_id)
-    
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT balance, level, progress FROM users WHERE tg_id = ?", (tg_id,))
-    user = c.fetchone()
-    conn.close()
-    
-    if not user:
-        await call.message.answer("❌ No account found!", reply_markup=get_menu())
+@dp.message(Command("channels"))
+async def channels_command(message: types.Message):
+    """List all monitored channels"""
+    if message.chat.id != GROUP_CHAT_ID and message.from_user.id not in [8497620413]:
+        await message.reply("❌ This command is only available in the main group.")
         return
     
-    text = f"💰 <b>Your Balance</b>\n\n💎 Balance: <code>{user[0]:.4f}</code> ATF\n📈 Level: {user[1]}\n📊 Progress: {user[2]:.1f}%"
-    await call.message.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
+    await message.reply(format_channel_list(), parse_mode=ParseMode.HTML)
 
-@dp.callback_query(F.data == "stats")
-async def stats(call: types.CallbackQuery):
-    tg_id = str(call.from_user.id)
-    await call.answer("Loading...")
-    sync_user(tg_id)
-    
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT balance, level, progress, next_claim, last_task, last_claim FROM users WHERE tg_id = ?", (tg_id,))
-    user = c.fetchone()
-    conn.close()
-    
-    if not user:
-        await call.message.answer("❌ No account found!", reply_markup=get_menu())
+@dp.message(Command("addchannel"))
+async def add_channel_command(message: types.Message):
+    """Add a channel to monitor"""
+    if message.chat.id != GROUP_CHAT_ID and message.from_user.id not in [8497620413]:
+        await message.reply("❌ This command is only available in the main group.")
         return
     
-    text = f"📊 <b>Mining Stats</b>\n\n💰 Balance: <code>{user[0]:.4f}</code> ATF\n📈 Level: {user[1]}\n📊 Progress: {user[2]:.1f}%\n⏳ Next Claim: {user[3] or 'Ready'}\n🔄 Last Tasks: {user[4] or 'Never'}\n💰 Last Claim: {user[5] or 'Never'}"
-    await call.message.answer(text, reply_markup=get_menu(), parse_mode=ParseMode.HTML)
-
-@dp.callback_query(F.data == "mine")
-async def mine(call: types.CallbackQuery):
-    tg_id = str(call.from_user.id)
-    await call.answer("⛏️ Mining started! Please wait...", show_alert=True)
-    
-    success = mine_now(tg_id)
-    
-    conn = db()
-    c = conn.cursor()
-    c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
-    user = c.fetchone()
-    conn.close()
-    
-    if success and user:
-        await call.message.answer(
-            f"✅ <b>Mining & Claim Completed!</b>\n\n"
-            f"💰 New Balance: <code>{user[0]:.4f}</code> ATF",
-            reply_markup=get_menu(),
-            parse_mode=ParseMode.HTML
-        )
-    elif success:
-        await call.message.answer(
-            "✅ <b>Mining & Claim Completed!</b>",
-            reply_markup=get_menu()
-        )
-    else:
-        await call.message.answer(
-            "⚠️ <b>Mining/Claim could not be completed.</b>\n\n"
-            "Check the server logs for details.",
-            reply_markup=get_menu(),
-            parse_mode=ParseMode.HTML
-        )
-
-@dp.callback_query(F.data == "back")
-async def back(call: types.CallbackQuery):
-    await call.message.delete()
-    await start(call.message)
-
-@dp.message(F.text)
-async def handle_text(msg: types.Message):
-    text = msg.text.strip()
-    tg_id = str(msg.from_user.id)
-    name = msg.from_user.first_name or "User"
-    username = msg.from_user.username or ""
-    
-    if "atfminers.asloni.online" in text and "tgWebAppData" in text:
-        conn = db()
-        c = conn.cursor()
-        c.execute("""INSERT OR REPLACE INTO users 
-            (tg_id, link, first_name, username, ref_code, device_id) 
-            VALUES (?, ?, ?, ?, ?, ?)""",
-                  (tg_id, text, name, username, YOUR_REF_CODE, YOUR_DEVICE_ID))
-        conn.commit()
-        conn.close()
-        await msg.answer(
-            "✅ <b>Link saved!</b>\n\n"
-            "Now send <b>BOTH</b> cookies:\n"
-            "• <code>atf_tma_session</code>\n"
-            "• <code>cf_clearance</code>\n\n"
-            "Format:\n"
-            "<code>atf_session: YOUR_atf_tma_session</code>\n"
-            "<code>cf_clearance: YOUR_cf_clearance</code>",
-            reply_markup=get_back(),
+    args = message.text.split()
+    if len(args) < 2:
+        await message.reply(
+            "❌ <b>Usage:</b> <code>/addchannel CHANNEL_ID</code>\n\n"
+            "<b>Example:</b> <code>/addchannel -1001234567890</code>\n\n"
+            "📌 Make sure your user account is in the channel.",
             parse_mode=ParseMode.HTML
         )
         return
     
-    if "atf_session:" in text and "cf_clearance:" in text:
-        lines = text.split('\n')
-        atf_session = None
-        cf_clearance = None
+    try:
+        channel_id = int(args[1])
         
-        for line in lines:
-            if "atf_session:" in line:
-                atf_session = line.replace("atf_session:", "").strip()
-            if "cf_clearance:" in line:
-                cf_clearance = line.replace("cf_clearance:", "").strip()
-        
-        if atf_session and cf_clearance:
-            conn = db()
-            c = conn.cursor()
-            c.execute("SELECT link FROM users WHERE tg_id = ?", (tg_id,))
-            user = c.fetchone()
-            conn.close()
-            
-            if not user or not user[0]:
-                await msg.answer("❌ <b>Link not found!</b>\n\nFirst send your ATF link.", reply_markup=get_back(), parse_mode=ParseMode.HTML)
-                return
-            
-            conn = db()
-            c = conn.cursor()
-            c.execute("UPDATE users SET atf_session = ?, cf_clearance = ? WHERE tg_id = ?",
-                      (atf_session, cf_clearance, tg_id))
-            conn.commit()
-            conn.close()
-            
-            sync_result = sync_user(tg_id)
-            
-            if sync_result:
-                conn = db()
-                c = conn.cursor()
-                c.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
-                user = c.fetchone()
-                conn.close()
-                
-                await msg.answer(
-                    f"✅ <b>Both cookies saved!</b>\n\n💰 Balance: <code>{user[0]:.4f}</code> ATF\n\nBot is now active! 🚀",
-                    reply_markup=get_menu(),
-                    parse_mode=ParseMode.HTML
-                )
-            else:
-                await msg.answer(
-                    "❌ <b>Cookies invalid!</b>\n\n"
-                    "Please get fresh cookies from browser.",
-                    reply_markup=get_back(),
-                    parse_mode=ParseMode.HTML
-                )
+        if channel_id in MONITORED_CHANNELS:
+            await message.reply(f"⚠️ Channel <code>{channel_id}</code> is already being monitored.", parse_mode=ParseMode.HTML)
             return
+        
+        try:
+            chat = await user_client.get_entity(channel_id)
+            channel_name = chat.title or f"Channel {abs(channel_id)}"
+            channel_names[str(channel_id)] = channel_name
+            await save_channel_names()
+            get_channel_emoji(channel_id)
+            await save_channel_emojis()
+        except Exception as e:
+            channel_name = f"Channel {abs(channel_id)}"
+            logger.error(f"Failed to get channel info: {e}")
+        
+        MONITORED_CHANNELS.append(channel_id)
+        save_channels()
+        last_message_ids[str(channel_id)] = 0
+        save_last_messages()
+        
+        emoji = get_channel_emoji(channel_id)
+        
+        await message.reply(
+            f"✅ <b>Channel Added!</b>\n\n"
+            f"{emoji} <b>Name:</b> {channel_name}\n"
+            f"📌 <b>ID:</b> <code>{channel_id}</code>\n\n"
+            f"🔔 Now monitoring this channel for new messages.",
+            parse_mode=ParseMode.HTML
+        )
+        
+    except ValueError:
+        await message.reply("❌ <b>Invalid channel ID.</b> Please provide a numeric ID.", parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await message.reply(f"❌ <b>Error:</b> {e}", parse_mode=ParseMode.HTML)
+
+@dp.message(Command("removechannel"))
+async def remove_channel_command(message: types.Message):
+    """Remove a channel from monitoring"""
+    if message.chat.id != GROUP_CHAT_ID and message.from_user.id not in [8497620413]:
+        await message.reply("❌ This command is only available in the main group.")
+        return
     
-    await msg.answer(
-        "❌ <b>Invalid input!</b>\n\n"
-        "Send either:\n"
-        "• ATF link (full URL)\n"
-        "• BOTH cookies:\n"
-        "  <code>atf_session: YOUR_atf_tma_session</code>\n"
-        "  <code>cf_clearance: YOUR_cf_clearance</code>",
-        reply_markup=get_menu(),
-        parse_mode=ParseMode.HTML
-    )
+    args = message.text.split()
+    if len(args) < 2:
+        await message.reply(
+            "❌ <b>Usage:</b> <code>/removechannel CHANNEL_ID</code>\n\n"
+            "<b>Example:</b> <code>/removechannel -1001234567890</code>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    try:
+        channel_id = int(args[1])
+        
+        if channel_id not in MONITORED_CHANNELS:
+            await message.reply(f"⚠️ Channel <code>{channel_id}</code> is not being monitored.", parse_mode=ParseMode.HTML)
+            return
+        
+        MONITORED_CHANNELS.remove(channel_id)
+        save_channels()
+        if str(channel_id) in last_message_ids:
+            del last_message_ids[str(channel_id)]
+            save_last_messages()
+        
+        await message.reply(
+            f"✅ <b>Channel Removed!</b>\n\n"
+            f"📌 <b>ID:</b> <code>{channel_id}</code>\n\n"
+            f"🔔 No longer monitoring this channel.",
+            parse_mode=ParseMode.HTML
+        )
+        
+    except ValueError:
+        await message.reply("❌ <b>Invalid channel ID.</b> Please provide a numeric ID.", parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await message.reply(f"❌ <b>Error:</b> {e}", parse_mode=ParseMode.HTML)
 
-# ========== SCHEDULER ==========
-scheduler = BackgroundScheduler()
-scheduler.add_job(process_all, 'interval', minutes=5)
-scheduler.start()
+@dp.message(Command("last"))
+async def last_command(message: types.Message):
+    """Get last 2 messages from all channels"""
+    if message.chat.id != GROUP_CHAT_ID and message.from_user.id not in [8497620413]:
+        await message.reply("❌ This command is only available in the main group.")
+        return
+    
+    status_msg = await message.reply("🔄 <b>Fetching messages...</b>", parse_mode=ParseMode.HTML)
+    
+    messages_data = await get_all_channels_last_messages(limit=2)
+    
+    if not messages_data:
+        await status_msg.edit_text("📭 <b>No messages found in any channel.</b>", parse_mode=ParseMode.HTML)
+        return
+    
+    # Send each channel's messages
+    for chat_id, messages in messages_data.items():
+        channel_id = int(chat_id)
+        emoji = get_channel_emoji(channel_id)
+        channel_name = get_channel_name(channel_id)
+        
+        for msg in messages:
+            msg_type = msg.get('type', 'text')
+            media_emoji = get_media_emoji(msg_type)
+            timestamp = msg['date'].strftime('%d %b %Y • %I:%M %p')
+            
+            if msg_type != 'text':
+                formatted_msg = f"""<blockquote expandable>
+<b>{emoji} {channel_name}</b>
+{media_emoji} {msg_type.upper()}
+🕒 {timestamp}
+━━━━━━━━━━━━━━━━━━━━
+<em>📷 {msg_type.upper()} message</em>
+</blockquote>"""
+            else:
+                formatted_msg = f"""<blockquote expandable>
+<b>{emoji} {channel_name}</b>
+📝 TEXT
+🕒 {timestamp}
+━━━━━━━━━━━━━━━━━━━━
+{msg['message']}
+</blockquote>"""
+            
+            await message.reply(formatted_msg, parse_mode=ParseMode.HTML)
+            await asyncio.sleep(0.5)
+    
+    await status_msg.delete()
+    # ============ BACKGROUND TASK ============
+async def background_monitor():
+    """Background task to monitor channels"""
+    await asyncio.sleep(10)
+    
+    logger.info("🚀 Starting channel monitor...")
+    logger.info(f"📡 Monitoring {len(MONITORED_CHANNELS)} channels")
+    logger.info(f"📤 Posting to group: {GROUP_CHAT_ID}")
+    
+    try:
+        await bot.send_message(
+            GROUP_CHAT_ID,
+            f"""<blockquote>
+<b>🤖 Channel Monitor Active</b>
 
-# ========== RUN BOTH ==========
-def run_flask():
-    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+📡 Monitoring <b>{len(MONITORED_CHANNELS)}</b> channels
+🎙️ Voice & Media messages supported
+📤 New messages will appear here automatically.
+</blockquote>""",
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        logger.error(f"Failed to send startup message: {e}")
+    
+    await monitor_channels()
 
-async def run_bot():
-    auto_add_your_account()
-    print("=" * 40)
-    print("🚀 ATF Bot Started (EXACT BROWSER PAYLOAD)")
-    print("📊 Dashboard: http://localhost:5000")
-    print("💬 Support: @xghostid")
-    print("✅ Exact browser payload: device_id, ref_code, initData, request_id")
-    print("=" * 40)
+# ============ MAIN ============
+async def main():
+    """Main entry point"""
+    load_channels()
+    load_last_messages()
+    await load_channel_names()
+    await load_channel_emojis()
+    
+    # Start user client
+    await user_client.start()
+    logger.info("✅ User client started successfully")
+    
+    # Update channel names and emojis
+    await update_channel_names()
+    
+    logger.info("🚀 Starting Channel Monitor Bot...")
+    logger.info(f"📡 Monitoring {len(MONITORED_CHANNELS)} channels")
+    logger.info(f"📤 Posting to group: {GROUP_CHAT_ID}")
+    
+    asyncio.create_task(background_monitor())
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    Thread(target=run_flask, daemon=True).start()
-    asyncio.run(run_bot())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n👋 Bot stopped")
+    except Exception as e:
+        print(f"❌ Error: {e}")
