@@ -11,9 +11,10 @@ from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
-from aiogram.types import FSInputFile
+from aiogram.types import FSInputFile, InputMediaPhoto
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
+from telethon.tl.types import MessageEntityCustomEmoji, MessageEntityTextUrl
 
 # Logging setup
 logging.basicConfig(
@@ -412,6 +413,27 @@ def format_channel_list():
         msg += f"{idx}. {emoji} <b>{name}</b>\n"
         msg += f"   📌 ID: <code>{chat_id}</code>\n"
     return msg
+
+
+def extract_entities(text, entities):
+    """Extract custom emoji and text URL entities"""
+    if not entities:
+        return text
+    
+    # Process entities in reverse order to maintain positions
+    for entity in sorted(entities, key=lambda e: e.offset, reverse=True):
+        entity_text = text[entity.offset:entity.offset + entity.length]
+        
+        if isinstance(entity, MessageEntityCustomEmoji):
+            # Custom emoji - keep as is
+            pass
+        elif isinstance(entity, MessageEntityTextUrl):
+            # Text URL
+            url = entity.url
+            replacement = f'<a href="{url}">{entity_text}</a>'
+            text = text[:entity.offset] + replacement + text[entity.offset + entity.length:]
+    
+    return text
     # ============================================
 # PART 3 - CHANNEL MONITORING, COMMANDS & MAIN
 # ============================================
@@ -482,47 +504,33 @@ async def process_message(message):
             else:
                 await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
         
-        # PHOTO (MULTIPLE PHOTOS FIX)
+        # PHOTO - FIXED WITH PROPER CAPTION
         elif message.photo:
-            photos = []
-            
-            if hasattr(message, 'grouped_id') and message.grouped_id:
-                try:
-                    async for album_msg in user_client.iter_messages(
-                        chat_id, 
-                        min_id=message.id - 20, 
-                        max_id=message.id + 20
-                    ):
-                        if (hasattr(album_msg, 'grouped_id') and 
-                            album_msg.grouped_id == message.grouped_id and
-                            album_msg.photo):
-                            photos.append(album_msg)
-                except:
-                    photos.append(message)
-            else:
-                photos.append(message)
-            
-            if msg_text:
-                await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
-            
-            for idx, photo_msg in enumerate(photos):
-                file_path, file_name = await download_media(photo_msg)
+            try:
+                file_path, file_name = await download_media(message)
+
                 if file_path and os.path.exists(file_path):
-                    if idx == 0 and msg_text:
-                        if len(photos) > 1:
-                            await bot.send_photo(
-                                GROUP_CHAT_ID, 
-                                FSInputFile(file_path),
-                                caption=f"📸 Photo {idx+1}/{len(photos)}"
-                            )
-                        else:
-                            await bot.send_photo(GROUP_CHAT_ID, FSInputFile(file_path))
-                    else:
-                        await bot.send_photo(GROUP_CHAT_ID, FSInputFile(file_path))
+                    await bot.send_photo(
+                        GROUP_CHAT_ID,
+                        FSInputFile(file_path),
+                        caption=formatted_msg,
+                        parse_mode=ParseMode.HTML
+                    )
                     os.remove(file_path)
                 else:
-                    if idx == 0 and not msg_text:
-                        await bot.send_message(GROUP_CHAT_ID, formatted_msg, parse_mode=ParseMode.HTML)
+                    logger.error(f"❌ Photo download failed: channel={chat_id}, message={msg_id}")
+                    await bot.send_message(
+                        GROUP_CHAT_ID,
+                        formatted_msg,
+                        parse_mode=ParseMode.HTML
+                    )
+            except Exception as e:
+                logger.error(f"❌ Photo send error: channel={chat_id}, message={msg_id}: {e}")
+                await bot.send_message(
+                    GROUP_CHAT_ID,
+                    formatted_msg,
+                    parse_mode=ParseMode.HTML
+                )
         
         # TEXT ONLY
         else:
@@ -558,12 +566,73 @@ async def get_channel_last_messages(chat_id, limit=1):
                 'message_id': msg.id,
                 'message': msg_text,
                 'type': msg_type,
-                'date': msg.date.strftime('%d %b %Y • %I:%M %p')
+                'date': msg.date.strftime('%d %b %Y • %I:%M %p'),
+                'message_obj': msg  # Store full message object for media
             })
         return messages
     except Exception as e:
         logger.error(f"Error getting messages from {chat_id}: {e}")
         return []
+
+
+async def send_media_message(chat_id, msg_data, formatted_msg):
+    """Send media message with proper caption"""
+    msg = msg_data['message_obj']
+    msg_type = msg_data['type']
+    
+    # VOICE
+    if msg.voice:
+        file_path, file_name = await download_media(msg)
+        if file_path and os.path.exists(file_path):
+            await bot.send_voice(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
+            os.remove(file_path)
+            return True
+    
+    # VIDEO
+    elif msg.video:
+        file_path, file_name = await download_media(msg)
+        if file_path and os.path.exists(file_path):
+            await bot.send_video(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
+            os.remove(file_path)
+            return True
+    
+    # STICKER
+    elif msg.sticker:
+        file_path, file_name = await download_media(msg)
+        if file_path and os.path.exists(file_path):
+            await bot.send_sticker(chat_id, FSInputFile(file_path))
+            await bot.send_message(chat_id, formatted_msg, parse_mode=ParseMode.HTML)
+            os.remove(file_path)
+            return True
+    
+    # AUDIO
+    elif msg.audio:
+        file_path, file_name = await download_media(msg)
+        if file_path and os.path.exists(file_path):
+            await bot.send_audio(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
+            os.remove(file_path)
+            return True
+    
+    # DOCUMENT / GIF
+    elif msg.document:
+        file_path, file_name = await download_media(msg)
+        if file_path and os.path.exists(file_path):
+            if msg_type == "gif":
+                await bot.send_animation(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
+            else:
+                await bot.send_document(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
+            os.remove(file_path)
+            return True
+    
+    # PHOTO
+    elif msg.photo:
+        file_path, file_name = await download_media(msg)
+        if file_path and os.path.exists(file_path):
+            await bot.send_photo(chat_id, FSInputFile(file_path), caption=formatted_msg, parse_mode=ParseMode.HTML)
+            os.remove(file_path)
+            return True
+    
+    return False
 
 
 # ============ COMMAND HANDLERS ============
@@ -607,10 +676,14 @@ async def channels_command(message: types.Message):
 
 @dp.message(Command("last"))
 async def last_command(message: types.Message):
-    """✅ EVERYONE can use this - Get last message from all channels"""
+    """✅ EVERYONE can use this - Get last message from ALL channels with media"""
+    
     status_msg = await message.reply("🔄 <b>Fetching messages...</b>", parse_mode=ParseMode.HTML)
     
+    # Get all channels data
     channels_data = {}
+    channel_messages = {}
+    
     for chat_id in MONITORED_CHANNELS:
         messages = await get_channel_last_messages(chat_id, limit=1)
         if messages:
@@ -620,6 +693,7 @@ async def last_command(message: types.Message):
                 'type': msg['type'],
                 'date': msg['date']
             }
+            channel_messages[str(chat_id)] = msg
         else:
             channels_data[str(chat_id)] = {
                 'message': '📭 No messages yet',
@@ -631,8 +705,35 @@ async def last_command(message: types.Message):
         await status_msg.edit_text("📭 <b>No channels found.</b>", parse_mode=ParseMode.HTML)
         return
     
+    # Send combined text first
     combined_msg = format_combined_message(channels_data)
     await status_msg.edit_text(combined_msg, parse_mode=ParseMode.HTML)
+    
+    # Then send each channel's media (if any)
+    for chat_id_str, msg_data in channel_messages.items():
+        chat_id = int(chat_id_str)
+        msg_type = msg_data['type']
+        
+        # Skip text messages (already in combined text)
+        if msg_type == 'text':
+            continue
+        
+        # Format message for media
+        msg_text = msg_data['message']
+        formatted_msg = format_channel_message(
+            chat_id, 
+            msg_text, 
+            msg_data['message_id'], 
+            msg_type
+        )
+        
+        # Send media with caption
+        try:
+            # Small delay to avoid rate limiting
+            await asyncio.sleep(0.5)
+            await send_media_message(message.chat.id, msg_data, formatted_msg)
+        except Exception as e:
+            logger.error(f"Error sending media for channel {chat_id}: {e}")
 
 
 @dp.message(Command("addchannel"))
